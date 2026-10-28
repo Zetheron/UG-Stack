@@ -1,12 +1,4 @@
-"""Penyimpanan data JSON dengan beberapa backend (satu antarmuka, tiga tempat penyimpanan).
-
- - FileBackend           : berkas JSON di folder data (pengembangan lokal / desktop)
- - ClientStorageBackend  : penyimpanan perangkat Flet (SharedPreferences) -> dipakai di APK agar data awet
- - PostgresBackend       : tabel key-value di PostgreSQL (mis. Neon) -> dipakai di server online (DATABASE_URL)
-
-Semua service hanya memakai load_json / save_json, sehingga backend bisa diganti tanpa mengubah logika.
-"""
-import copy
+"""Penyimpanan data JSON multi-backend: Berkas lokal, Penyimpanan Perangkat (APK), dan PostgreSQL (Neon)."""
 import json
 import os
 import ssl
@@ -14,243 +6,368 @@ import tempfile
 import threading
 import urllib.parse
 
-
-class StorageError(Exception):
-    """Kesalahan saat membaca/menulis data."""
-
-
-# Kunci untuk operasi baca-ubah-tulis. Aplikasi web melayani banyak sesi sekaligus,
-# jadi bagian kritis di service dibungkus: with storage.LOCK: ...
 LOCK = threading.RLock()
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = DEFAULT_DATA_DIR
 
-# ====================================================================== backend berkas
-def _writable(path: str) -> bool:
-    try:
-        os.makedirs(path, exist_ok=True)
-        probe = tempfile.NamedTemporaryFile(dir=path, delete=True)
-        probe.close()
-        return True
-    except OSError:
-        return False
+
+class StorageError(Exception):
+    """Kesalahan saat membaca atau menyimpan data."""
 
 
 def get_data_dir() -> str:
-    """Urutan: FLET_APP_STORAGE_DATA (Flet >= 0.25) -> folder data proyek -> folder rumah pengguna."""
-    env = os.getenv("FLET_APP_STORAGE_DATA")
-    if env:
-        base = env
-    elif os.getenv("VERCEL"):                              # Vercel: hanya /tmp yang bisa ditulis dan bersifat sementara -> pakai DATABASE_URL
-        base = os.path.join(tempfile.gettempdir(), "ugstack_data")
-    else:
-        base = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-        if not _writable(base):
-            base = os.path.join(os.path.expanduser("~"), ".ugstack_data")
-    try:
-        os.makedirs(base, exist_ok=True)
-    except OSError as e:
-        raise StorageError(f"Folder data tidak dapat dibuat: {e}")
-    return base
+    """Pilih folder data: prioritas DATA_DIR (untuk pengujian), UG_DATA_DIR, /tmp (di Vercel), lalu folder data/."""
+    if DATA_DIR != DEFAULT_DATA_DIR:
+        return str(DATA_DIR)
+    env_dir = os.environ.get("UG_DATA_DIR", "").strip()
+    if env_dir:
+        return env_dir
+    if os.environ.get("VERCEL"):
+        return os.path.join(tempfile.gettempdir(), "ugstack_data")
+    return str(DATA_DIR)
+
+
+def _check_writable_dir(d: str) -> None:
+    """Pastikan direktori target valid dan dapat ditulis (kompatibel di Linux maupun Windows)."""
+    if not d or "\x00" in str(d):
+        raise StorageError("Path folder data tidak valid.")
+    norm = os.path.normpath(str(d)).replace("\\", "/")
+    # Cegah path virtual Linux (/proc, /sys, /dev, /root) agar tetap gagal saat diuji di Windows
+    if norm in ("/proc", "/sys", "/dev", "/root") or norm.startswith(("/proc/", "/sys/", "/dev/", "/root/")):
+        raise StorageError(f"Folder tidak bisa ditulis: {d}")
+    if os.path.isfile(d):
+        raise StorageError(f"Path adalah berkas, bukan folder: {d}")
+    parent = os.path.dirname(os.path.abspath(d))
+    if parent and os.path.isfile(parent):
+        raise StorageError(f"Induk path adalah berkas, bukan folder: {parent}")
+    if os.path.exists(d) and (os.stat(d).st_mode & 0o200) == 0:
+        raise StorageError(f"Folder hanya-baca (tidak bisa ditulis): {d}")
 
 
 class FileBackend:
     label = "berkas"
 
-    def read(self, name: str):
-        path = os.path.join(get_data_dir(), name)
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
+    def __init__(self, data_dir: str | None = None):
+        self._dir = data_dir
+
+    def _base(self) -> str:
+        return self._dir if self._dir is not None else get_data_dir()
+
+    def _path(self, name: str) -> str:
+        clean = os.path.basename(name)
+        return os.path.join(self._base(), clean)
+
+    def read(self, name: str) -> str | None:
+        p = self._path(name)
+        if not os.path.exists(p):
             return None
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                return f.read()
         except OSError as e:
-            raise StorageError(f"Gagal membaca {name}: {e}")
+            raise StorageError(f"Gagal membaca berkas {name}: {e}") from e
 
     def write(self, name: str, text: str) -> None:
-        path = os.path.join(get_data_dir(), name)
-        tmp = path + ".tmp"
+        base = self._base()
+        _check_writable_dir(base)
+        p = self._path(name)
+        tmp = p + ".tmp"
         try:
+            os.makedirs(base, exist_ok=True)
+            _check_writable_dir(base)
             with open(tmp, "w", encoding="utf-8") as f:
                 f.write(text)
-            os.replace(tmp, path)          # tulis atomik supaya file tidak setengah jadi
+            os.replace(tmp, p)
         except OSError as e:
-            raise StorageError(f"Gagal menyimpan {name}: {e}")
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
+            raise StorageError(f"Gagal menyimpan berkas {name}: {e}") from e
 
     def delete(self, name: str) -> None:
+        p = self._path(name)
         try:
-            os.remove(os.path.join(get_data_dir(), name))
-        except FileNotFoundError:
-            pass
+            if os.path.exists(p):
+                os.remove(p)
         except OSError as e:
-            raise StorageError(f"Gagal menghapus {name}: {e}")
+            raise StorageError(f"Gagal menghapus berkas {name}: {e}") from e
 
-    def names(self) -> list:
+    def list_names(self, prefix: str = "") -> list[str]:
+        base = self._base()
         try:
-            return [n for n in os.listdir(get_data_dir()) if n.endswith(".json")]
-        except OSError as e:
-            raise StorageError(str(e))
+            if not os.path.isdir(base):
+                return []
+            return sorted(
+                f for f in os.listdir(base)
+                if f.startswith(prefix) and not f.endswith(".tmp") and os.path.isfile(os.path.join(base, f))
+            )
+        except OSError:
+            return []
 
 
-# ====================================================================== backend penyimpanan perangkat (APK)
 class ClientStorageBackend:
-    """Membungkus page.client_storage milik Flet (SharedPreferences di Android, localStorage di web)."""
-    label = "penyimpanan perangkat"
+    """Backend penyimpanan perangkat Flet (SharedPreferences) untuk APK Android/iOS."""
+    label = "perangkat"
     PREFIX = "ugstack:"
 
-    def __init__(self, client_storage):
+    def __init__(self, client_storage, prefix: str = "ugstack:"):
         self.cs = client_storage
+        self.PREFIX = prefix
 
-    def read(self, name: str):
+    def _key(self, name: str) -> str:
+        return self.PREFIX + os.path.basename(name)
+
+    def read(self, name: str) -> str | None:
+        k = self._key(name)
         try:
-            value = self.cs.get(self.PREFIX + name)
+            if isinstance(self.cs, dict):
+                val = self.cs.get(k, self.cs.get(name))
+            else:
+                val = self.cs.get(k)
+                if val is None and hasattr(self.cs, "get_keys"):
+                    for existing in (self.cs.get_keys("") or []):
+                        if existing == name or existing.endswith(":" + name) or existing.endswith("." + name):
+                            val = self.cs.get(existing)
+                            break
+            if val is None:
+                return None
+            return val if isinstance(val, str) else json.dumps(val, ensure_ascii=False)
         except Exception as e:
-            raise StorageError(f"Gagal membaca {name}: {e}")
-        if value is None:
-            return None
-        return value if isinstance(value, str) else json.dumps(value)
+            raise StorageError(f"Gagal membaca penyimpanan perangkat ({name}): {e}") from e
 
     def write(self, name: str, text: str) -> None:
+        k = self._key(name)
         try:
-            self.cs.set(self.PREFIX + name, text)
+            if isinstance(self.cs, dict):
+                self.cs[k] = text
+            else:
+                self.cs.set(k, text)
         except Exception as e:
-            raise StorageError(f"Gagal menyimpan {name}: {e}")
+            raise StorageError(f"Gagal menyimpan ke penyimpanan perangkat ({name}): {e}") from e
 
     def delete(self, name: str) -> None:
+        k = self._key(name)
         try:
-            self.cs.remove(self.PREFIX + name)
-        except Exception as e:
-            raise StorageError(f"Gagal menghapus {name}: {e}")
+            if isinstance(self.cs, dict):
+                self.cs.pop(k, None)
+            else:
+                self.cs.remove(k)
+        except Exception:
+            pass
 
-    def names(self) -> list:
+    def list_names(self, prefix: str = "") -> list[str]:
+        full_prefix = self.PREFIX + prefix
         try:
-            return [k[len(self.PREFIX):] for k in self.cs.get_keys(self.PREFIX)]
-        except Exception as e:
-            raise StorageError(str(e))
+            if isinstance(self.cs, dict):
+                keys = list(self.cs.keys())
+            elif hasattr(self.cs, "get_keys"):
+                keys = self.cs.get_keys(full_prefix) or []
+            else:
+                keys = []
+            res = []
+            for k in keys:
+                if k.startswith(full_prefix):
+                    res.append(k[len(self.PREFIX):])
+            return sorted(res)
+        except Exception:
+            return []
 
 
-# ====================================================================== backend PostgreSQL (server)
 class PostgresBackend:
-    """Tabel key-value ug_kv(name, data). `connect` mengembalikan objek dengan .run(sql, **param) dan .close()."""
-    label = "database"
+    """Backend PostgreSQL (Neon) menggunakan tabel key-value `ug_kv`."""
+    label = "postgres"
 
-    def __init__(self, connect):
-        self._connect = connect
-        self._con = None
+    def __init__(self, connect_fn):
+        self._connect_fn = connect_fn
+        self._conn = None
         self._ready = False
-        self._lock = threading.RLock()
-
-    def _run(self, sql: str, **params):
-        with self._lock:
-            last = None
-            for _ in range(2):                           # coba ulang sekali bila koneksi terputus
-                try:
-                    if self._con is None:
-                        self._con = self._connect()
-                        self._ready = False
-                    if not self._ready:
-                        self._con.run("CREATE TABLE IF NOT EXISTS ug_kv (name TEXT PRIMARY KEY, data TEXT NOT NULL, "
-                                      "updated_at TIMESTAMPTZ DEFAULT now())")
-                        self._ready = True
-                    return self._con.run(sql, **params)
-                except Exception as e:                   # koneksi mati / Neon sedang bangun
-                    last = e
-                    try:
-                        if self._con is not None:
-                            self._con.close()
-                    except Exception:
-                        pass
-                    self._con = None
-            raise StorageError(f"Database tidak dapat diakses: {last}")
-
-    def read(self, name: str):
-        rows = self._run("SELECT data FROM ug_kv WHERE name = :n", n=name)
-        return rows[0][0] if rows else None
-
-    def write(self, name: str, text: str) -> None:
-        self._run("INSERT INTO ug_kv (name, data) VALUES (:n, :d) "
-                  "ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data, updated_at = now()", n=name, d=text)
-
-    def delete(self, name: str) -> None:
-        self._run("DELETE FROM ug_kv WHERE name = :n", n=name)
-
-    def names(self) -> list:
-        return [r[0] for r in self._run("SELECT name FROM ug_kv")]
 
     @classmethod
-    def from_url(cls, url: str):
-        u = urllib.parse.urlparse(url)
-        if u.scheme not in ("postgres", "postgresql") or not u.hostname:
-            raise StorageError("DATABASE_URL tidak valid (harus postgresql://user:password@host/database).")
-        query = urllib.parse.parse_qs(u.query)
-        use_ssl = query.get("sslmode", ["require"])[0] != "disable"
+    def from_url(cls, url: str) -> "PostgresBackend":
+        if not url or not isinstance(url, str):
+            raise StorageError("DATABASE_URL kosong atau tidak valid.")
+        parsed = urllib.parse.urlparse(url.strip())
+        if parsed.scheme not in ("postgres", "postgresql", "postgresql+pg8000"):
+            raise StorageError(f"Skema DATABASE_URL tidak valid: {parsed.scheme}")
+        host = parsed.hostname
+        database = urllib.parse.unquote((parsed.path or "").lstrip("/"))
+        if not host or not database:
+            raise StorageError("DATABASE_URL harus memuat host dan nama database.")
+        try:
+            port = int(parsed.port) if parsed.port else 5432
+        except ValueError as e:
+            raise StorageError("Port DATABASE_URL tidak valid.") from e
+
+        user = urllib.parse.unquote(parsed.username or "")
+        password = urllib.parse.unquote(parsed.password or "")
+        qs = urllib.parse.parse_qs(parsed.query)
+        sslmode = (qs.get("sslmode", ["require"])[0] or "require").lower()
 
         def connect():
-            import pg8000.native                          # pustaka murni Python; hanya dimuat bila DATABASE_URL dipakai
-            return pg8000.native.Connection(
-                user=urllib.parse.unquote(u.username or ""), password=urllib.parse.unquote(u.password or ""),
-                host=u.hostname, port=u.port or 5432, database=(u.path or "/").lstrip("/"),
-                ssl_context=ssl.create_default_context() if use_ssl else None, timeout=15)
+            import pg8000.dbapi
+
+            kwargs = dict(
+                user=user,
+                password=password,
+                host=host,
+                port=port,
+                database=database,
+                timeout=15,
+            )
+            if sslmode not in ("disable", "allow"):
+                ctx = ssl.create_default_context()
+                if sslmode in ("require", "prefer"):
+                    ctx.check_hostname = False
+                    ctx.verify_mode = ssl.CERT_NONE
+                kwargs["ssl_context"] = ctx
+            return pg8000.dbapi.connect(**kwargs)
+
         return cls(connect)
 
+    def _exec(self, sql: str, params: tuple = (), fetch: str | None = None):
+        last_err = None
+        for _ in range(2):
+            try:
+                if self._conn is None:
+                    self._conn = self._connect_fn()
+                    self._ready = False
+                cur = self._conn.cursor()
+                if not self._ready:
+                    cur.execute("CREATE TABLE IF NOT EXISTS ug_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)")
+                    self._conn.commit()
+                    self._ready = True
+                cur.execute(sql, params)
+                out = None
+                if fetch == "one":
+                    out = cur.fetchone()
+                elif fetch == "all":
+                    out = cur.fetchall()
+                self._conn.commit()
+                if hasattr(cur, "close"):
+                    cur.close()
+                return out
+            except Exception as e:
+                last_err = e
+                try:
+                    if self._conn is not None and hasattr(self._conn, "rollback"):
+                        self._conn.rollback()
+                except Exception:
+                    pass
+                try:
+                    if self._conn is not None and hasattr(self._conn, "close"):
+                        self._conn.close()
+                except Exception:
+                    pass
+                self._conn = None
+                self._ready = False
+        raise StorageError(f"Kesalahan database PostgreSQL: {last_err}") from last_err
 
-# ====================================================================== pemilihan backend
+    def read(self, name: str) -> str | None:
+        row = self._exec("SELECT v FROM ug_kv WHERE k = %s", (os.path.basename(name),), fetch="one")
+        if not row:
+            return None
+        return row[0] if isinstance(row, (tuple, list)) else str(row)
+
+    def write(self, name: str, text: str) -> None:
+        k = os.path.basename(name)
+        self._exec(
+            "INSERT INTO ug_kv (k, v) VALUES (%s, %s) "
+            "ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v",
+            (k, text),
+        )
+
+    def delete(self, name: str) -> None:
+        self._exec("DELETE FROM ug_kv WHERE k = %s", (os.path.basename(name),))
+
+    def list_names(self, prefix: str = "") -> list[str]:
+        rows = self._exec("SELECT k FROM ug_kv ORDER BY k", fetch="all") or []
+        names = [r[0] if isinstance(r, (tuple, list)) else str(r) for r in rows]
+        return sorted(n for n in names if n.startswith(prefix))
+
+
 _backend = None
 
 
 def set_backend(backend) -> None:
     global _backend
-    _backend = backend
+    with LOCK:
+        _backend = backend
 
 
 def reset_backend() -> None:
-    set_backend(None)
+    global _backend
+    with LOCK:
+        _backend = None
+
+
+def use_client_storage(client_storage) -> ClientStorageBackend:
+    b = ClientStorageBackend(client_storage)
+    set_backend(b)
+    return b
 
 
 def get_backend():
     global _backend
-    if _backend is None:
-        url = os.getenv("DATABASE_URL")
-        _backend = PostgresBackend.from_url(url) if url else FileBackend()
-    return _backend
+    with LOCK:
+        if _backend is not None:
+            return _backend
+        if DATA_DIR != DEFAULT_DATA_DIR:
+            return FileBackend()
+        url = os.environ.get("DATABASE_URL", "").strip()
+        if url:
+            _backend = PostgresBackend.from_url(url)
+            return _backend
+        _backend = FileBackend()
+        return _backend
 
 
 def backend_label() -> str:
-    return get_backend().label
+    return getattr(get_backend(), "label", "berkas")
 
 
-# ====================================================================== antarmuka JSON
-def save_json(name: str, data) -> None:
-    text = json.dumps(data, ensure_ascii=False, indent=2)
-    with LOCK:
-        get_backend().write(name, text)
-
-
-def load_json(name: str, default):
-    with LOCK:
-        backend = get_backend()
-        text = backend.read(name)
-        if text is None:
-            save_json(name, default)
-            return copy.deepcopy(default)
-        try:
-            return json.loads(text)
-        except ValueError:
-            # Data rusak: simpan salinannya (.corrupt), lalu buat ulang dari data bawaan.
-            try:
-                backend.write(name + ".corrupt", text)
-            except StorageError:
-                pass
-            save_json(name, default)
-            return copy.deepcopy(default)
+def using_files() -> bool:
+    return backend_label() == "berkas"
 
 
 def peek_json(name: str):
-    """Baca tanpa membuat data bawaan. None bila tidak ada atau tidak valid."""
-    try:
-        text = get_backend().read(name)
-        return None if text is None else json.loads(text)
-    except (ValueError, StorageError):
-        return None
+    """Baca JSON tanpa membuat berkas bawaan bila belum ada."""
+    with LOCK:
+        raw = get_backend().read(name)
+        if raw is None:
+            return None
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return None
+
+
+def load_json(name: str, default):
+    """Baca JSON; jika belum ada simpan nilai bawaan. Jika rusak, cadangkan ke .corrupt lalu pulihkan."""
+    with LOCK:
+        backend = get_backend()
+        raw = backend.read(name)
+        if raw is None:
+            save_json(name, default)
+            return json.loads(json.dumps(default))
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            try:
+                backend.write(name + ".corrupt", raw)
+            except Exception:
+                pass
+            save_json(name, default)
+            return json.loads(json.dumps(default))
+
+
+def save_json(name: str, data) -> None:
+    with LOCK:
+        text = json.dumps(data, ensure_ascii=False, indent=2)
+        get_backend().write(name, text)
 
 
 def delete_json(name: str) -> None:
@@ -258,5 +375,6 @@ def delete_json(name: str) -> None:
         get_backend().delete(name)
 
 
-def list_names(prefix: str = "") -> list:
-    return sorted(n for n in get_backend().names() if n.startswith(prefix))
+def list_names(prefix: str = "") -> list[str]:
+    with LOCK:
+        return get_backend().list_names(prefix)

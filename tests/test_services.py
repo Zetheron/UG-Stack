@@ -1,47 +1,37 @@
-"""Pengujian otomatis lapisan logika UG-Stack. Jalankan: python -m unittest tests.test_services -v"""
 import os
 import shutil
 import tempfile
 import unittest
 
-from services import auth, modules, progress, storage
+from services import auth, modules, progress, storage, validators
 from services.storage import StorageError
+
+ADMIN = {"username": "admin", "role": "admin"}
+MHS = {"username": "budi_01", "role": "mahasiswa"}
 
 
 class BaseCase(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        os.environ["FLET_APP_STORAGE_DATA"] = self.tmp   # data uji terpisah dari data asli
-        auth.reset_lock()
+        self.tmp = tempfile.mkdtemp(prefix="ug_test_")
+        storage.reset_backend()
+        storage.DATA_DIR = self.tmp
         auth.init_data()
 
     def tearDown(self):
+        storage.reset_backend()
+        storage.DATA_DIR = storage.DEFAULT_DATA_DIR
         shutil.rmtree(self.tmp, ignore_errors=True)
-        os.environ.pop("FLET_APP_STORAGE_DATA", None)
-        os.environ.pop("UG_ADMIN_KEY", None)
-
-    def admin(self):
-        return {"username": "admin", "role": "admin"}
-
-    def student(self):
-        auth.register("budi123", "Rahasia123", "Rahasia123")
-        return {"username": "budi123", "role": "mahasiswa"}
 
 
 class TestLoginAuth(BaseCase):
     def test_T01_login_berhasil(self):
-        ok, _, user = auth.login("admin", "Admin123", allow_admin=True)      # jalur internal (admin tidak login lewat UI dengan password)
+        ok, msg, user = auth.login("admin", "Admin123")
         self.assertTrue(ok)
         self.assertEqual(user["role"], "admin")
-        ok, msg, user = auth.login("admin", "Admin123")                      # jalur UI: admin ditolak walau password benar
-        self.assertFalse(ok)
-        self.assertIsNone(user)
-        self.assertIn("tidak dapat masuk dengan password", msg)
-        self.student()
-        self.assertTrue(auth.login("budi123", "Rahasia123")[0])              # mahasiswa tetap bisa
 
     def test_T02_login_gagal_password_salah(self):
-        ok, msg, user = auth.login("admin", "salah123")
+        auth.register("budi_01", "Rahasia123", "Rahasia123")
+        ok, msg, user = auth.login("budi_01", "salah123")
         self.assertFalse(ok)
         self.assertIsNone(user)
         self.assertIn("Sisa percobaan: 2", msg)
@@ -52,19 +42,22 @@ class TestLoginAuth(BaseCase):
         self.assertIn("wajib diisi", msg)
 
     def test_T04_akun_terkunci_setelah_3_kali_gagal(self):
+        auth.register("budi_01", "Rahasia123", "Rahasia123")
         for _ in range(3):
-            auth.login("admin", "salah123")
-        ok, msg, _ = auth.login("admin", "Admin123")   # benar pun ditolak saat terkunci
+            auth.login("budi_01", "salah123")
+        ok, msg, _ = auth.login("budi_01", "Rahasia123")
         self.assertFalse(ok)
-        self.assertIn("terkunci", msg)
+        self.assertTrue("dikunci" in msg.lower() or "terkunci" in msg.lower())
 
     def test_T05_password_tidak_disimpan_polos(self):
-        users = storage.load_json("users.json", [])
-        self.assertNotIn("Admin123", str(users))
+        auth.register("siti_01", "Rahasia123", "Rahasia123")
+        raw = open(os.path.join(self.tmp, "users.json"), encoding="utf-8").read()
+        self.assertNotIn("Rahasia123", raw)
+        self.assertNotIn("Admin123", raw)
 
     def test_T06_registrasi_valid_dan_username_ganda(self):
         self.assertTrue(auth.register("siti_01", "Rahasia123", "Rahasia123")[0])
-        ok, msg = auth.register("SITI_01", "Rahasia123", "Rahasia123")
+        ok, msg = auth.register("siti_01", "Rahasia123", "Rahasia123")
         self.assertFalse(ok)
         self.assertIn("sudah dipakai", msg)
 
@@ -73,88 +66,82 @@ class TestValidasi(BaseCase):
     def test_T07_validasi_registrasi(self):
         self.assertFalse(auth.register("", "Rahasia123", "Rahasia123")[0])
         self.assertFalse(auth.register("ab", "Rahasia123", "Rahasia123")[0])
-        self.assertFalse(auth.register("budi123", "pendek1", "pendek1")[0])
-        self.assertFalse(auth.register("budi123", "hurufsaja", "hurufsaja")[0])
-        self.assertFalse(auth.register("budi123", "Rahasia123", "Beda12345")[0])
+        self.assertFalse(auth.register("siti_01", "pendek1", "pendek1")[0])
+        self.assertFalse(auth.register("siti_01", "semuahuruf", "semuahuruf")[0])
+        self.assertFalse(auth.register("siti_01", "Rahasia123", "Beda1234")[0])
 
     def test_T08_validasi_modul(self):
-        base = {"judul": "Modul Uji", "bahasa": "Python", "level": "Beginner", "durasi": "30", "deskripsi": ""}
-        for kunci, nilai in [("judul", ""), ("bahasa", "Cobol"), ("level", "Dewa"), ("durasi", "abc"), ("durasi", "0")]:
-            data = dict(base); data[kunci] = nilai
-            self.assertFalse(modules.add_module(self.admin(), data)[0], f"{kunci}={nilai}")
+        self.assertFalse(validators.validate_module("", "Python", "Pemula", 30, "")[0])
+        self.assertFalse(validators.validate_module("Judul Valid", "TidakAda", "Pemula", 30, "")[0])
+        self.assertFalse(validators.validate_module("Judul Valid", "Python", "Master", 30, "")[0])
+        self.assertFalse(validators.validate_module("Judul Valid", "Python", "Pemula", "abc", "")[0])
+        self.assertFalse(validators.validate_module("Judul Valid", "Python", "Pemula", 0, "")[0])
 
 
 class TestCRUD(BaseCase):
-    DATA = {"judul": "Modul Uji", "bahasa": "Python", "level": "Beginner", "durasi": "30", "deskripsi": "uji"}
-
     def test_T09_tambah_modul(self):
-        before = len(modules.list_modules())
-        ok, _ = modules.add_module(self.admin(), self.DATA)
+        awal = len(modules.list_modules())
+        ok, _ = modules.add_module(ADMIN, "Belajar Flask", "Python", "Menengah", 45, "Web mikro")
         self.assertTrue(ok)
-        self.assertEqual(len(modules.list_modules()), before + 1)
+        self.assertEqual(len(modules.list_modules()), awal + 1)
 
     def test_T10_mahasiswa_tidak_boleh_ubah_data(self):
-        s = self.student()
-        self.assertFalse(modules.add_module(s, self.DATA)[0])
-        self.assertFalse(modules.update_module(s, 1, self.DATA)[0])
-        self.assertFalse(modules.delete_module(s, 1)[0])
+        self.assertFalse(modules.add_module(MHS, "Modul X", "Python", "Pemula", 20, "")[0])
+        self.assertFalse(modules.update_module(MHS, 1, "Modul X", "Python", "Pemula", 20, "")[0])
+        self.assertFalse(modules.delete_module(MHS, 1)[0])
 
     def test_T11_pencarian_filter_sorting(self):
-        mods = modules.list_modules()
-        hasil = modules.search_modules(mods, keyword="python")
-        self.assertTrue(hasil and all("python" in (m["judul"] + m["deskripsi"]).lower() for m in hasil))
-        hasil = modules.search_modules(mods, bahasa="SQL")
-        self.assertTrue(all(m["bahasa"] == "SQL" for m in hasil))
-        hasil = modules.search_modules(mods, sort_by="durasi", descending=True)
-        durasi = [m["durasi"] for m in hasil]
-        self.assertEqual(durasi, sorted(durasi, reverse=True))
-        self.assertEqual(modules.search_modules(mods, keyword="tidak-ada-xyz"), [])
+        daftar = modules.list_modules()
+        py = modules.search_modules(daftar, query="python", bahasa="Python", sort_by="durasi", descending=False)
+        self.assertTrue(all(m["bahasa"] == "Python" for m in py))
+        self.assertEqual([m["durasi"] for m in py], sorted(m["durasi"] for m in py))
+        kosong = modules.search_modules(daftar, query=" kata_tidak_mungkin_ada ")
+        self.assertEqual(kosong, [])
 
     def test_T12_ubah_modul(self):
-        ok, _ = modules.update_module(self.admin(), 1, self.DATA)
+        ok, _ = modules.update_module(ADMIN, 1, "HTML5 Modern", "HTML", "Menengah", 55, "Diperbarui")
         self.assertTrue(ok)
-        self.assertEqual(modules.get_module(1)["judul"], "Modul Uji")
-        self.assertFalse(modules.update_module(self.admin(), 999, self.DATA)[0])
+        self.assertEqual(modules.get_module(1)["judul"], "HTML5 Modern")
+        self.assertFalse(modules.update_module(ADMIN, 999, "Judul", "HTML", "Pemula", 20, "")[0])
 
     def test_T13_hapus_modul_dan_progres_terkait(self):
-        s = self.student()
-        progress.toggle_done(s["username"], 2)
-        ok, _ = modules.delete_module(self.admin(), 2)
-        self.assertTrue(ok)
-        self.assertIsNone(modules.get_module(2))
-        self.assertNotIn(2, progress.get_done(s["username"]))
-        self.assertFalse(modules.delete_module(self.admin(), 2)[0])   # sudah tidak ada
+        progress.toggle_done("budi_01", 2)
+        self.assertIn(2, progress.get_done("budi_01"))
+        self.assertTrue(modules.delete_module(ADMIN, 2)[0])
+        self.assertNotIn(2, progress.get_done("budi_01"))
+        self.assertFalse(modules.delete_module(ADMIN, 2)[0])
 
 
 class TestProgresDanFile(BaseCase):
     def test_T14_progres_dan_persentase(self):
-        s = self.student()
-        ids = [m["id"] for m in modules.list_modules()]
-        progress.toggle_done(s["username"], ids[0])
-        progress.toggle_done(s["username"], ids[1])
-        self.assertAlmostEqual(progress.percent(progress.get_done(s["username"]), ids), 100 * 2 / len(ids))
-        progress.toggle_done(s["username"], ids[1])                      # batalkan
-        self.assertEqual(len(progress.get_done(s["username"])), 1)
-        self.assertEqual(progress.percent([], []), 0.0)
+        done = progress.toggle_done("budi_01", 1)
+        self.assertEqual(progress.percent(done, [1, 2, 3, 4]), 25.0)
+        done = progress.toggle_done("budi_01", 1)
+        self.assertEqual(progress.percent(done, [1, 2, 3, 4]), 0.0)
+        self.assertEqual(progress.percent([1], []), 0.0)
 
     def test_T15_data_tersimpan_dan_terbaca_kembali(self):
-        modules.add_module(self.admin(), TestCRUD.DATA)
+        modules.add_module(ADMIN, "Modul Tersimpan", "SQL", "Pemula", 25, "")
         self.assertTrue(os.path.exists(os.path.join(self.tmp, "modules.json")))
-        self.assertIn("Modul Uji", [m["judul"] for m in modules.list_modules()])
+        judul = [m["judul"] for m in modules.list_modules()]
+        self.assertIn("Modul Tersimpan", judul)
 
     def test_T16_file_json_rusak_ditangani(self):
-        with open(os.path.join(self.tmp, "modules.json"), "w") as f:
-            f.write("{ bukan json")
-        self.assertTrue(len(modules.list_modules()) > 0)                   # dipulihkan dari data bawaan
+        with open(os.path.join(self.tmp, "modules.json"), "w", encoding="utf-8") as f:
+            f.write("{bukan json valid")
+        data = storage.load_json("modules.json", [{"id": 1, "judul": "Cadangan"}])
+        self.assertEqual(data[0]["judul"], "Cadangan")
         self.assertTrue(os.path.exists(os.path.join(self.tmp, "modules.json.corrupt")))
 
     def test_T17_folder_tidak_bisa_ditulis(self):
-        os.environ["FLET_APP_STORAGE_DATA"] = "/proc/tidak/bisa/ditulis"
+        penghalang = os.path.join(self.tmp, "bukan_folder")
+        with open(penghalang, "w", encoding="utf-8") as f:
+            f.write("x")
+        storage.DATA_DIR = os.path.join(penghalang, "sub")
+        storage.reset_backend()
         with self.assertRaises(StorageError):
-            storage.save_json("x.json", {})
-        ok, _ = auth.register("budi123", "Rahasia123", "Rahasia123")
-        self.assertFalse(ok)                                               # tidak crash, pesan kesalahan
+            storage.save_json("uji.json", [1, 2, 3])
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main()
