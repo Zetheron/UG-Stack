@@ -1,4 +1,3 @@
-import ssl
 import tempfile as _tempfile
 import os as _os
 if _os.environ.get("VERCEL") or _os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or _os.environ.get("VERCEL_ENV"):
