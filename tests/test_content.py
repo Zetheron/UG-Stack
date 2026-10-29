@@ -53,7 +53,7 @@ class TestQuizSertifikat(IsolatedStorage):
 
     def test_T21_penilaian_quiz(self):
         r = quiz.grade("python", self.benar("python"))
-        self.assertEqual((r["correct"], r["percent"], r["passed"]), (8, 100.0, True))
+        self.assertEqual((r["correct"], r["percent"], r["passed"]), (len(qs), 100.0, True))
         r = quiz.grade("python", [None] * 8)                 # belum dijawab
         self.assertEqual((r["correct"], r["passed"]), (0, False))
         salah = [(q["answer"] + 1) % 4 for q in QUIZZES["python"]]

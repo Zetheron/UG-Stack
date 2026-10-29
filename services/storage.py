@@ -271,3 +271,71 @@ def delete_json(name: str) -> None:
 
 def list_names(prefix: str = "") -> list:
     return sorted(n for n in get_backend().names() if n.startswith(prefix))
+
+
+# --- OPTIMASI ANTI-LAG PINDAH TAB (IN-MEMORY CACHE + WRITE-THROUGH NEON) ---
+import time as _time
+_MEM_CACHE: dict[str, tuple[float, str | None]] = {}
+_orig_load_json = load_json
+_orig_peek_json = peek_json
+_orig_save_json = save_json
+_orig_delete_json = delete_json
+_orig_reset_backend = reset_backend
+_orig_set_backend = set_backend
+
+def reset_backend() -> None:
+    _MEM_CACHE.clear()
+    _orig_reset_backend()
+
+def set_backend(backend) -> None:
+    _MEM_CACHE.clear()
+    _orig_set_backend(backend)
+
+def _ttl_for(name: str) -> float:
+    if DATA_DIR != DEFAULT_DATA_DIR:
+        return 0.0
+    return 300.0 if name.startswith("cache_") else 15.0
+
+def peek_json(name: str):
+    ttl = _ttl_for(name)
+    now = _time.time()
+    if ttl > 0 and name in _MEM_CACHE:
+        ts, raw = _MEM_CACHE[name]
+        if now - ts < ttl:
+            return None if raw is None else json.loads(raw)
+    res = _orig_peek_json(name)
+    if ttl > 0:
+        _MEM_CACHE[name] = (now, None if res is None else json.dumps(res, ensure_ascii=False))
+    return res
+
+def load_json(name: str, default):
+    ttl = _ttl_for(name)
+    now = _time.time()
+    if ttl > 0 and name in _MEM_CACHE:
+        ts, raw = _MEM_CACHE[name]
+        if now - ts < ttl and raw is not None:
+            try:
+                return json.loads(raw)
+            except Exception:
+                pass
+    res = _orig_load_json(name, default)
+    if ttl > 0:
+        try:
+            _MEM_CACHE[name] = (now, json.dumps(res, ensure_ascii=False))
+        except Exception:
+            pass
+    return res
+
+def save_json(name: str, data) -> None:
+    _orig_save_json(name, data)
+    if _ttl_for(name) > 0:
+        try:
+            _MEM_CACHE[name] = (_time.time(), json.dumps(data, ensure_ascii=False))
+        except Exception:
+            _MEM_CACHE.pop(name, None)
+    else:
+        _MEM_CACHE.clear()
+
+def delete_json(name: str) -> None:
+    _MEM_CACHE.pop(name, None)
+    _orig_delete_json(name)

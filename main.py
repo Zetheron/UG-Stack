@@ -1,3 +1,4 @@
+from views.chat import create_chat_view
 import os
 import time
 
@@ -300,7 +301,8 @@ def main(page: ft.Page):
         if view == "courses":
             return get_paid_courses_view(page, user, mobile, on_login=lambda: open_auth("login"),
                                          on_changed=lambda: go("courses"), on_open_lang=open_lang)
-        if view == "tryit":
+        if view == "chat": lambda: create_chat_view(page, user=state["user"], go=go, mobile=m),
+            "tryit":
             return get_tryit_view(page, default_lang=args.get("lang", "HTML"), on_back=go_back, code=args.get("code"))
         return get_home_view(
             page, user=user, progress_text=progress_text(), on_tryit_click=open_tryit, on_search=open_search,

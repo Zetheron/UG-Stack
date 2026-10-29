@@ -2,6 +2,28 @@
 Teks yang ditulis dalam bahasa Inggris di kode (beranda) punya padanan Indonesia di sini agar mode Indonesia benar-benar Indonesia."""
 
 UI_PAIRS = [
+    ('Simulasi', 'Simulation'),
+    ('Chat', 'Chat'),
+    ('#umum', '#general'),
+    ('#tanya-dosen', '#ask-lecturer'),
+    ('#python-web', '#python-web'),
+    ('#algoritma', '#algorithms'),
+    ('Kirim', 'Send'),
+    ('Pesan Terbaru', 'Latest Messages'),
+    ('Tulis pesan atau ketik @bot...', 'Write a message or type @bot...'),
+    ('Ruang Diskusi & Tanya Dosen', 'Discussion Room & Ask Lecturer'),
+    ('Kanal diskusi mahasiswa, dosen, dan Bot Asisten UG-Stack.', 'Discussion channel for students, lecturers, and the UG-Stack Bot Assistant.'),
+    ('Tanya Bot: Binary Search', 'Ask Bot: Binary Search'),
+    ('Tanya Bot: Merge Sort', 'Ask Bot: Merge Sort'),
+    ('NPM Mahasiswa (opsional, untuk sinkronisasi)', 'Student ID / NPM (optional, for sync)'),
+    ('Setiap detik', 'Every second'),
+    ('Sekali saat mount', 'Once on mount'),
+    ('Tidak pernah', 'Never'),
+    ('Saat unmount saja', 'Only on unmount'),
+    ('<!-- komentar -->', '<!-- comment -->'),
+    ('{/* komentar */}', '{/* comment */}'),
+    ('// komentar', '// comment'),
+    ('## komentar', '## comment'),
     # ---- beranda (aslinya Inggris)
     ("Pustaka JS untuk membangun halaman web", "A JS library for developing web pages"),
     ("Bahasa pemrograman multi-paradigma", "A multi-paradigm programming language"),
