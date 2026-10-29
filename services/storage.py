@@ -1,11 +1,3 @@
-import tempfile as _tempfile
-import os as _os
-if _os.environ.get("VERCEL") or _os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or _os.environ.get("VERCEL_ENV"):
-    _os.environ.setdefault("VERCEL", "1")
-    _os.environ.setdefault("UG_ASGI", "1")
-    _os.environ.setdefault("HOME", _tempfile.gettempdir())
-    _os.environ.setdefault("FLET_APP_STORAGE_TEMP", _tempfile.gettempdir())
-    _os.environ.setdefault("FLET_APP_STORAGE_DATA", _os.path.join(_tempfile.gettempdir(), "ug_flet_data"))
 """Penyimpanan data JSON dengan beberapa backend (satu antarmuka, tiga tempat penyimpanan).
 
  - FileBackend           : berkas JSON di folder data (pengembangan lokal / desktop)
