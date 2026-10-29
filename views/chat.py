@@ -69,3 +69,5 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
             msg_col,
         ], spacing=12))
     ], spacing=0)
+
+get_chat_view = create_chat_view

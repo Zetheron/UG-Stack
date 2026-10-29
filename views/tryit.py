@@ -5,8 +5,30 @@ from components.ui import GREEN, card, chip, green_button, pad, page_banner, sec
 from services import simulator
 
 
-def create_tryit_view(page: ft.Page, lang_name: str = "Python", initial_code: str | None = None,
-                      go=None, mobile: bool = False) -> ft.Control:
+def get_tryit_view(*args, **kwargs) -> ft.Control:
+    """Mendukung pemanggilan get_tryit_view(lang, on_back, code) maupun get_tryit_view(page, ...)."""
+    page = kwargs.get("page")
+    lang_name = kwargs.get("lang_name", kwargs.get("lang", "Python"))
+    initial_code = kwargs.get("initial_code", kwargs.get("code", None))
+    on_back_click = kwargs.get("on_back_click", kwargs.get("go", None))
+    mobile = bool(kwargs.get("mobile", False))
+
+    rem = list(args)
+    if rem and hasattr(rem[0], "controls"):
+        page = rem.pop(0)
+    if rem and isinstance(rem[0], str):
+        lang_name = rem.pop(0)
+    if rem:
+        if callable(rem[0]):
+            on_back_click = rem.pop(0)
+        elif isinstance(rem[0], str):
+            initial_code = rem.pop(0)
+    if rem:
+        if isinstance(rem[0], str):
+            initial_code = rem.pop(0)
+        elif callable(rem[0]):
+            on_back_click = rem.pop(0)
+
     lang_key = lang_name if lang_name in SAMPLES else "Python"
     code_tf = ft.TextField(
         value=initial_code if initial_code else SAMPLES.get(lang_key, SAMPLES["Python"]),
@@ -34,17 +56,23 @@ def create_tryit_view(page: ft.Page, lang_name: str = "Python", initial_code: st
         chosen = lang_dd.value or "Python"
         code_tf.value = SAMPLES.get(chosen, SAMPLES["Python"])
         output_text.value = simulator.run_code(chosen, code_tf.value)
-        if getattr(output_text, "page", None):
+        try:
             code_tf.update()
             output_text.update()
+        except Exception:
+            if page:
+                page.update()
 
     lang_dd.on_change = on_lang_change
 
     def run_editor(e):
         chosen = lang_dd.value or "Python"
         output_text.value = simulator.run_code(chosen, code_tf.value or "")
-        if getattr(output_text, "page", None):
+        try:
             output_text.update()
+        except Exception:
+            if page:
+                page.update()
 
     algo_dd = ft.Dropdown(
         label="Level",
@@ -76,11 +104,24 @@ def create_tryit_view(page: ft.Page, lang_name: str = "Python", initial_code: st
             )
             for st in steps
         ]
-        if getattr(algo_steps_col, "page", None):
-            algo_summary.update()
-            algo_steps_col.update()
+        try:
+            if getattr(algo_steps_col, "page", None):
+                algo_summary.update()
+                algo_steps_col.update()
+        except Exception:
+            pass
 
     run_algo()
+
+    def handle_back(e):
+        if callable(on_back_click):
+            try:
+                on_back_click("home")
+            except TypeError:
+                try:
+                    on_back_click(e)
+                except TypeError:
+                    on_back_click()
 
     return ft.Column([
         page_banner("UG-Stack Spaces", "Ruang eksperimen kode", mobile),
@@ -88,7 +129,7 @@ def create_tryit_view(page: ft.Page, lang_name: str = "Python", initial_code: st
             padding=pad(mobile),
             content=ft.Column([
                 ft.Row([
-                    ft.TextButton("❮ Kembali ke Beranda", on_click=lambda e: go("home") if go else None),
+                    ft.TextButton("❮ Kembali ke Beranda", on_click=handle_back),
                     chip("Try Spaces", "#D9EEE1"),
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
                 card(ft.Column([
@@ -117,3 +158,6 @@ def create_tryit_view(page: ft.Page, lang_name: str = "Python", initial_code: st
             ], spacing=18),
         ),
     ], spacing=0)
+
+
+create_tryit_view = get_tryit_view

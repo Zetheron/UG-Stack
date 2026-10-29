@@ -12,7 +12,6 @@ from services import admin_code, auth, i18n, modules as module_service, progress
 from services.roles import can_manage_content
 from services.storage import StorageError
 from views.account import open_change_password
-from views.chat import create_chat_view
 from views.admin import get_admin_view
 from views.auth_view import get_auth_view
 from views.certificates import get_certificate_detail_view, get_certificates_view
@@ -27,6 +26,7 @@ from views.references import get_references_view
 from views.roadmap import get_roadmap_view
 from views.search import get_search_view
 from views.tryit import get_tryit_view
+from views.chat import create_chat_view
 from views.tutorials import get_tutorials_view
 
 MOBILE_BREAKPOINT = 768                       # lebar (px) di bawah ini = tampilan HP
@@ -294,6 +294,9 @@ def main(page: ft.Page):
                                    on_open_lesson=open_lang, on_open_ref=lambda k: go("references", lang=k))
         if view == "roadmap":
             return get_roadmap_view(page, mobile, open_lang)
+        if view == "chat":
+            return create_chat_view(page, mobile, open_lang)
+
         if view == "info":
             return get_info_view(page, args.get("key", "tentang"), mobile, open_home)
         if view == "plans":
