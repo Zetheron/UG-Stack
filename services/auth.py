@@ -369,3 +369,21 @@ def import_users_csv(actor, text: str):
 def list_students():
     users = storage.load_json(USERS_FILE, [])
     return [u["username"] for u in users if u["role"] == "mahasiswa"]
+
+
+def set_user_npm(username: str, npm: str) -> tuple[bool, str]:
+    clean = (npm or "").strip()
+    if not clean or not (4 <= len(clean) <= 20) or not clean.replace("_", "").isalnum():
+        return False, "NPM harus 4-20 karakter huruf/angka."
+    with storage.LOCK:
+        users = storage.load_json(USERS_FILE, [])
+        for u in users:
+            if u["username"] != username and (u["username"].lower() == clean.lower() or str(u.get("npm", "")).lower() == clean.lower()):
+                return False, "NPM sudah dipakai oleh akun lain."
+        for u in users:
+            if u["username"] == username:
+                u["npm"] = clean
+                storage.save_json(USERS_FILE, users)
+                audit.log("UBAH_NPM", username, f"NPM ditautkan: {clean}")
+                return True, "NPM berhasil disinkronkan dengan akun Anda."
+    return False, "Pengguna tidak ditemukan."

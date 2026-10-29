@@ -68,6 +68,7 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
                 show_error(msg)
         else:
             ok, msg = auth.register(username.value, password.value, confirm.value)
+            if ok and (npm_field.value or "").strip(): auth.set_user_npm((username.value or "").strip(), npm_field.value)
             if ok:
                 page.show_snack(msg)
                 if on_switch_mode:
@@ -118,7 +119,7 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
             ft.Text(HINT[role] if is_login else "Buat akun baru. Password minimal 8 karakter (huruf dan angka).",
                     size=13, color=ft.colors.ON_SURFACE_VARIANT),
             ft.Container(height=5),
-            username, password, confirm, message,
+            username, npm_field, password, confirm, message,
             ft.ElevatedButton("Login" if is_login else "Daftar", bgcolor=GREEN, color=ft.colors.WHITE, on_click=submit),
             *switch_controls,
             ft.TextButton("❮ Kembali ke Beranda", on_click=lambda e: on_back() if on_back else None),

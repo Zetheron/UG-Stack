@@ -4,7 +4,7 @@ from content.languages import LANGS
 
 NAV_ITEMS = [
     ("Tutorials", "tutorials"), ("References", "references"), ("Exercises", "exercises"),
-    ("Certificates", "certificates"), ("Roadmap", "roadmap"), ("Upgrade", "upgrade"), ("Paid Courses", "paid_courses"),
+    ("Certificates", "certificates"), ("Simulasi", "tryit"), ("Chat", "chat"), ("Roadmap", "roadmap"), ("Upgrade", "upgrade"), ("Paid Courses", "paid_courses"),
 ]
 
 

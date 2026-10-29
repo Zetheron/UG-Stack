@@ -62,7 +62,14 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
             items = data if isinstance(data, list) else [data]
             body.controls = [render_item(i) for i in items] or [ft.Text(empty_text, size=12, color=ft.colors.ON_SURFACE_VARIANT)]
             note.value = STATUS_TEXT.get(status, "")
-        page.update()
+        try:
+            if getattr(body, "page", None):
+                body.update()
+                note.update()
+            else:
+                page.update()
+        except Exception:
+            pass
 
     schedule(page, work)
     return ft.Container(
