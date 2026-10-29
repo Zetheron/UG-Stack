@@ -1,3 +1,14 @@
+import inspect as _inspect
+try:
+    import fastapi as _fastapi
+    _orig_fa_init = _fastapi.FastAPI.__init__
+    if "openapi_prefix" not in _inspect.signature(_orig_fa_init).parameters:
+        def _patched_fa_init(self, *args, **kwargs):
+            kwargs.pop("openapi_prefix", None)
+            return _orig_fa_init(self, *args, **kwargs)
+        _fastapi.FastAPI.__init__ = _patched_fa_init
+except Exception:
+    pass
 """Penyimpanan data JSON dengan beberapa backend (satu antarmuka, tiga tempat penyimpanan).
 
  - FileBackend           : berkas JSON di folder data (pengembangan lokal / desktop)
