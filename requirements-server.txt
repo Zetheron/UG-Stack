@@ -1,2 +1,5 @@
 flet==0.23.1
-pg8000>=1.30
+flet-fastapi==0.23.1
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pg8000>=1.30.0
