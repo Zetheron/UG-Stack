@@ -149,13 +149,12 @@ class TestProgresDanFile(BaseCase):
         self.assertTrue(os.path.exists(os.path.join(self.tmp, "modules.json.corrupt")))
 
     def test_T17_folder_tidak_bisa_ditulis(self):
-        penghalang = os.path.join(self.tmp, "bukan_folder")
-        with open(penghalang, "w", encoding="utf-8") as f:
-            f.write("x")
-        storage.DATA_DIR = os.path.join(penghalang, "sub")
-        storage.reset_backend()
+        os.environ["FLET_APP_STORAGE_DATA"] = "/proc/tidak/bisa/ditulis"
         with self.assertRaises(StorageError):
-            storage.save_json("uji.json", [1, 2, 3])
+            storage.save_json("x.json", {})
+        ok, _ = auth.register("budi123", "Rahasia123", "Rahasia123")
+        self.assertFalse(ok)                                               # tidak crash, pesan kesalahan
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
