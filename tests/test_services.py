@@ -137,11 +137,10 @@ class TestProgresDanFile(BaseCase):
         penghalang = os.path.join(self.tmp, "bukan_folder")
         with open(penghalang, "w", encoding="utf-8") as f:
             f.write("x")
-        storage.DATA_DIR = os.path.join(penghalang, "sub")
+        storage.DATA_DIR = penghalang
         storage.reset_backend()
         with self.assertRaises(StorageError):
             storage.save_json("uji.json", [1, 2, 3])
-
 
 if __name__ == "__main__":
     unittest.main()
