@@ -1,4 +1,14 @@
 import inspect as _inspect
+import tempfile as _tempfile
+import os as _os
+import time as _time
+
+if _os.environ.get("VERCEL") or _os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or _os.environ.get("VERCEL_ENV"):
+    _os.environ["VERCEL"] = "1"
+    _os.environ["UG_ASGI"] = "1"
+    _os.environ["HOME"] = _tempfile.gettempdir()
+    _os.environ.setdefault("FLET_APP_STORAGE_TEMP", _tempfile.gettempdir())
+
 try:
     import fastapi as _fastapi
     _orig_fa_init = _fastapi.FastAPI.__init__
@@ -9,6 +19,7 @@ try:
         _fastapi.FastAPI.__init__ = _patched_fa_init
 except Exception:
     pass
+
 """Penyimpanan data JSON dengan beberapa backend (satu antarmuka, tiga tempat penyimpanan).
 
  - FileBackend           : berkas JSON di folder data (pengembangan lokal / desktop)
@@ -273,15 +284,21 @@ def list_names(prefix: str = "") -> list:
     return sorted(n for n in get_backend().names() if n.startswith(prefix))
 
 
-# --- OPTIMASI ANTI-LAG PINDAH TAB (IN-MEMORY CACHE + WRITE-THROUGH NEON) ---
-import time as _time
-_MEM_CACHE: dict[str, tuple[float, str | None]] = {}
+# --- IN-MEMORY CACHE UNTUK VERCEL + NEON (ANTI-LAG PINDAH TAB) ---
+_MEM_CACHE: dict[str, tuple[float, str]] = {}
 _orig_load_json = load_json
 _orig_peek_json = peek_json
 _orig_save_json = save_json
 _orig_delete_json = delete_json
 _orig_reset_backend = reset_backend
 _orig_set_backend = set_backend
+
+def _cache_ttl(name: str) -> float:
+    if not (_os.environ.get("VERCEL") and _os.environ.get("DATABASE_URL")):
+        return 0.0
+    if _os.environ.get("FLET_APP_STORAGE_DATA"):
+        return 0.0
+    return 300.0 if name.startswith("cache_") else 10.0
 
 def reset_backend() -> None:
     _MEM_CACHE.clear()
@@ -291,29 +308,27 @@ def set_backend(backend) -> None:
     _MEM_CACHE.clear()
     _orig_set_backend(backend)
 
-def _ttl_for(name: str) -> float:
-    if DATA_DIR != DEFAULT_DATA_DIR:
-        return 0.0
-    return 300.0 if name.startswith("cache_") else 15.0
-
 def peek_json(name: str):
-    ttl = _ttl_for(name)
+    ttl = _cache_ttl(name)
     now = _time.time()
     if ttl > 0 and name in _MEM_CACHE:
         ts, raw = _MEM_CACHE[name]
         if now - ts < ttl:
-            return None if raw is None else json.loads(raw)
+            return json.loads(raw)
     res = _orig_peek_json(name)
-    if ttl > 0:
-        _MEM_CACHE[name] = (now, None if res is None else json.dumps(res, ensure_ascii=False))
+    if ttl > 0 and res is not None:
+        try:
+            _MEM_CACHE[name] = (now, json.dumps(res, ensure_ascii=False))
+        except Exception:
+            pass
     return res
 
 def load_json(name: str, default):
-    ttl = _ttl_for(name)
+    ttl = _cache_ttl(name)
     now = _time.time()
     if ttl > 0 and name in _MEM_CACHE:
         ts, raw = _MEM_CACHE[name]
-        if now - ts < ttl and raw is not None:
+        if now - ts < ttl:
             try:
                 return json.loads(raw)
             except Exception:
@@ -328,7 +343,7 @@ def load_json(name: str, default):
 
 def save_json(name: str, data) -> None:
     _orig_save_json(name, data)
-    if _ttl_for(name) > 0:
+    if _cache_ttl(name) > 0:
         try:
             _MEM_CACHE[name] = (_time.time(), json.dumps(data, ensure_ascii=False))
         except Exception:
