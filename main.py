@@ -1,4 +1,3 @@
-from views.chat import create_chat_view
 import os
 import time
 
@@ -13,6 +12,7 @@ from services import admin_code, auth, i18n, modules as module_service, progress
 from services.roles import can_manage_content
 from services.storage import StorageError
 from views.account import open_change_password
+from views.chat import create_chat_view
 from views.admin import get_admin_view
 from views.auth_view import get_auth_view
 from views.certificates import get_certificate_detail_view, get_certificates_view
@@ -301,8 +301,7 @@ def main(page: ft.Page):
         if view == "courses":
             return get_paid_courses_view(page, user, mobile, on_login=lambda: open_auth("login"),
                                          on_changed=lambda: go("courses"), on_open_lang=open_lang)
-        if view == "chat": lambda: create_chat_view(page, user=state["user"], go=go, mobile=m),
-            "tryit":
+        if view == "tryit":
             return get_tryit_view(page, default_lang=args.get("lang", "HTML"), on_back=go_back, code=args.get("code"))
         return get_home_view(
             page, user=user, progress_text=progress_text(), on_tryit_click=open_tryit, on_search=open_search,

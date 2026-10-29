@@ -68,7 +68,8 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
                 show_error(msg)
         else:
             ok, msg = auth.register(username.value, password.value, confirm.value)
-            if ok and (npm_field.value or "").strip(): auth.set_user_npm((username.value or "").strip(), npm_field.value)
+            if ok and (npm_field.value or "").strip():
+                auth.set_user_npm((username.value or "").strip(), npm_field.value)
             if ok:
                 page.show_snack(msg)
                 if on_switch_mode:

@@ -12,6 +12,7 @@ NAV_ITEMS = [
 def create_header(page: ft.Page, user=None, mobile=False, active_nav=None, active_lang=None,
                   dark=False, ui_lang="id", on_theme_toggle=None, on_lang_toggle=None, on_nav_click=None, on_lang_click=None, on_search_click=None, on_home_click=None,
                   on_login_click=None, on_dashboard_click=None, on_logout_click=None):
+    page._ug_user = user
     def call(fn, *args):
         return fn(*args) if fn else None
 
