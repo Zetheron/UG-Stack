@@ -27,10 +27,12 @@ BOT_KB = [
     (("npm", "login", "sinkron"), "Anda dapat login menggunakan Username maupun NPM mahasiswa yang sudah ditautkan ke akun Anda."),
 ]
 
+
 def list_messages(channel: str = "umum") -> list[dict]:
     ch = channel if channel in CHANNELS else "umum"
     msgs = storage.load_json(CHAT_FILE, SEED_MESSAGES)
     return [m for m in msgs if m.get("channel", "umum") == ch][-80:]
+
 
 def send_message(user: dict | None, channel: str, text: str) -> tuple[bool, str]:
     if not user:
@@ -38,6 +40,8 @@ def send_message(user: dict | None, channel: str, text: str) -> tuple[bool, str]
     clean = (text or "").strip()
     if not clean:
         return False, "Pesan tidak boleh kosong."
+    if len(clean) > 400:
+        return False, "Pesan maksimal 400 karakter."
     ch = channel if channel in CHANNELS else "umum"
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     with storage.LOCK:
@@ -57,10 +61,12 @@ def send_message(user: dict | None, channel: str, text: str) -> tuple[bool, str]
                 "role": "dosen", "text": reply, "time": now_str,
             })
         storage.save_json(CHAT_FILE, msgs[-200:])
+    audit.log(user.get("username", "-"), "CHAT_KIRIM", f"#{ch}: {clean[:40]}")
     return True, "Pesan terkirim."
 
+
 def delete_message(actor: dict | None, msg_id: int) -> tuple[bool, str]:
-    if not roles.is_staff(actor):
+    if not roles.can_manage_content(actor):
         return False, "Hanya admin atau dosen yang boleh menghapus pesan."
     with storage.LOCK:
         msgs = storage.load_json(CHAT_FILE, SEED_MESSAGES)

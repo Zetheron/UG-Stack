@@ -61,6 +61,5 @@ def code_block(page: ft.Page, code: str, title: str = "Contoh kode") -> ft.Conta
             ft.Row([ft.Text(title, size=11, color="#9AA0A6"),
                     ft.IconButton(ft.icons.COPY, icon_size=16, icon_color="#9AA0A6", tooltip="Salin kode", on_click=copy)],
                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            ft.Row([ft.Text(code, font_family="monospace", size=13, color="#E6E6E6", selectable=True)],
-                   scroll=ft.ScrollMode.AUTO),
+            ft.Text(code, font_family="monospace", size=13, color="#E6E6E6", selectable=True),
         ], spacing=0))

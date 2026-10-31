@@ -14,3 +14,6 @@ def is_dosen(user) -> bool:
 def can_manage_content(user) -> bool:
     """Admin dan dosen boleh mengelola modul dan soal quiz; hanya admin mengelola akun dan data."""
     return bool(user) and user.get("role") in ("admin", "dosen")
+
+
+is_staff = can_manage_content

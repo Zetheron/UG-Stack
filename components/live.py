@@ -1,17 +1,18 @@
-"""Panel konten otomatis (diambil di thread latar belakang supaya tampilan tidak membeku)."""
+"""Panel konten otomatis (instan dari cache memori/lokal, atau diambil di thread latar belakang tanpa membekukan UI)."""
 import threading
 import urllib.parse
 
 import flet as ft
 
 from content.fallback import ABOUT, RESOURCES
-
 from services import web_sources as ws
-
+from services.i18n import translate
 from .ui import link_text
 
 STATUS_TEXT = {"live": "Diperbarui dari web", "cache": "Dari cache (kurang dari 24 jam)",
                "stale": "Offline - memakai cache lama", "fallback": "Offline - menampilkan ringkasan bawaan"}
+
+_PANEL_MEM: dict[str, tuple[object, str]] = {}
 
 
 def schedule(page: ft.Page, fn) -> None:
@@ -21,7 +22,7 @@ def schedule(page: ft.Page, fn) -> None:
 
 
 def run_pending(page: ft.Page) -> None:
-    """Dipanggil setelah halaman tampil; menjalankan semua pemuatan konten di thread."""
+    """Dipanggil setelah halaman tampil; menjalankan pemuatan konten yang belum ada di memori."""
     fns, page._ug_pending = getattr(page, "_ug_pending", []), []
     for fn in fns:
         run_in_thread(page, fn)
@@ -42,6 +43,26 @@ def loading_row() -> ft.Row:
 
 def source_panel(page, title, emoji, source_label, source_url, loader, render_item,
                  empty_text="Tidak ada data.", col=None, fallback=None):
+    ui_lang = getattr(page, "_ug_lang", "id")
+    cache_key = f"{title}|{source_label}"
+
+    # Jika sudah ada di memori RAM, langsung tampilkan tanpa spinner dan tanpa thread baru!
+    if cache_key in _PANEL_MEM:
+        cached_data, cached_status = _PANEL_MEM[cache_key]
+        items = cached_data if isinstance(cached_data, list) else [cached_data]
+        controls = [render_item(i) for i in items] or [ft.Text(translate(empty_text, ui_lang), size=12, color=ft.colors.ON_SURFACE_VARIANT)]
+        body = ft.Column(controls, spacing=10)
+        note = ft.Text(translate(STATUS_TEXT.get(cached_status, ""), ui_lang), size=11, color=ft.colors.ON_SURFACE_VARIANT)
+        return ft.Container(
+            col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=16, border_radius=12,
+            border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
+            content=ft.Column([
+                ft.Text(f"{emoji} {translate(title, ui_lang)}", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+                ft.Divider(height=6),
+                body, note,
+                link_text(translate(f"Sumber: {source_label} ↗", ui_lang), source_url, size=11, color=ft.colors.ON_SURFACE_VARIANT),
+            ], spacing=6))
+
     body = ft.Column([loading_row()], spacing=10)
     note = ft.Text("", size=11, color=ft.colors.ON_SURFACE_VARIANT)
 
@@ -50,24 +71,23 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
         try:
             data, status = loader()
         except Exception:
-            if fallback is not None:                       # offline: tampilkan konten bawaan
+            if fallback is not None:
                 try:
                     data, status = fallback(), "fallback"
                 except Exception:
                     data = None
         if data is None:
-            body.controls = [ft.Text("Tidak dapat memuat konten. Periksa koneksi internet lalu muat ulang halaman.",
+            body.controls = [ft.Text(translate("Tidak dapat memuat konten. Periksa koneksi internet lalu muat ulang halaman.", ui_lang),
                                      size=12, color=ft.colors.RED_700)]
         else:
+            _PANEL_MEM[cache_key] = (data, status)
             items = data if isinstance(data, list) else [data]
-            body.controls = [render_item(i) for i in items] or [ft.Text(empty_text, size=12, color=ft.colors.ON_SURFACE_VARIANT)]
-            note.value = STATUS_TEXT.get(status, "")
+            body.controls = [render_item(i) for i in items] or [ft.Text(translate(empty_text, ui_lang), size=12, color=ft.colors.ON_SURFACE_VARIANT)]
+            note.value = translate(STATUS_TEXT.get(status, ""), ui_lang)
         try:
             if getattr(body, "page", None):
                 body.update()
                 note.update()
-            else:
-                page.update()
         except Exception:
             pass
 
@@ -83,7 +103,6 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
         ], spacing=6))
 
 
-# ------------------------------------------------------------------ penampil item per sumber
 def r_wiki(i):
     return ft.Column([ft.Text(i["extract"] or "-", size=13, color=ft.colors.ON_SURFACE_VARIANT),
                       link_text("Baca selengkapnya di Wikipedia ↗", i["url"], 12)], spacing=6)
@@ -113,9 +132,7 @@ def r_doc(i):
                       ft.Text(i["desc"], size=12, color=ft.colors.ON_SURFACE_VARIANT) if i["desc"] else ft.Container()], spacing=2)
 
 
-# ------------------------------------------------------------------ rangkaian panel siap pakai
 def static_panel(title: str, emoji: str, items: list, col=None) -> ft.Container:
-    """Panel tetap (tanpa internet): daftar sumber belajar resmi."""
     return ft.Container(
         col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=16, border_radius=12,
         border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
