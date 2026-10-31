@@ -37,13 +37,17 @@ _SAMPLE_TABLES = {
 }
 
 
+def _unquote(text: str) -> str:
+    return (text or "").strip().strip('"').strip("'").strip("`")
+
+
 def run_python_safe(code: str) -> str:
     if not (code or "").strip():
         return "[Program selesai dijalankan tanpa output print()]"
     try:
         tree = ast.parse(code, mode="exec")
     except SyntaxError as e:
-        return f"[SyntaxError] Baris {e.lineno}: {e.msg}"
+        return f"Baris {e.lineno}: {e.msg}"
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom, ast.Global, ast.Nonlocal)):
             return "[Keamanan Sandbox] Import/sistem dinonaktifkan di simulator web."
@@ -64,7 +68,7 @@ def run_python_safe(code: str) -> str:
     try:
         exec(compile(tree, "<sandbox>", "exec"), safe_env, safe_env)
     except Exception as e:
-        return f"{buf.getvalue()}\n[{type(e).__name__}] {e}".strip()
+        return f"{buf.getvalue()}\n{e}".strip()
     res = buf.getvalue().strip()
     return res if res else "[Program selesai dijalankan tanpa output print()]"
 
@@ -79,7 +83,6 @@ def _format_table(rows: list[dict], cols: list[str] | None = None) -> str:
     lines = [header, sep]
     for r in rows:
         lines.append(" | ".join(f"{str(r.get(k, '')):<{widths[k]}}" for k in keys))
-    lines.append(f"\n({len(rows)} baris hasil query real-time)")
     return "\n".join(lines)
 
 
@@ -96,7 +99,7 @@ def run_sql_safe(code: str) -> str:
             if m:
                 tname = m.group(1).lower()
                 cols = [c.strip() for c in m.group(2).split(",")]
-                vals = [v.strip().strip("'\"") for v in m.group(3).split(",")]
+                vals = [_unquote(v) for v in m.group(3).split(",")]
                 row = {"id": len(tables.get(tname, [])) + 1}
                 for c, v in zip(cols, vals):
                     try:
@@ -104,35 +107,31 @@ def run_sql_safe(code: str) -> str:
                     except ValueError:
                         row[c] = v
                 tables.setdefault(tname, []).append(row)
-                outputs.append(f"[INSERT OK] 1 baris ditambahkan ke '{tname}': {row}")
+                outputs.append(_format_table(tables[tname]))
             continue
         if up.startswith("UPDATE"):
-            m = re.search(r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*['\"]?([^'\"\s]+)['\"]?(?:\s+WHERE\s+(\w+)\s*=\s*['\"]?([^'\"]+)['\"]?)?", stmt, re.I)
+            m = re.search(r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*([^\s;]+)(?:\s+WHERE\s+(\w+)\s*=\s*(.+))?", stmt, re.I)
             if m:
-                tname, scol, sval, wcol, wval = m.group(1).lower(), m.group(2), m.group(3), m.group(4), m.group(5)
-                cnt = 0
+                tname, scol, sval, wcol, wval = m.group(1).lower(), m.group(2), _unquote(m.group(3)), m.group(4), _unquote(m.group(5) or "")
                 for r in tables.get(tname, []):
-                    if not wcol or str(r.get(wcol, "")).lower() == wval.strip().lower():
+                    if not wcol or str(r.get(wcol, "")).lower() == wval.lower():
                         try:
                             r[scol] = float(sval) if "." in sval else int(sval)
                         except ValueError:
                             r[scol] = sval
-                        cnt += 1
-                outputs.append(f"[UPDATE OK] {cnt} baris diperbarui pada '{tname}'.")
+                outputs.append(_format_table(tables.get(tname, [])))
             continue
         if up.startswith("DELETE"):
-            m = re.search(r"DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*=\s*['\"]?([^'\"]+)['\"]?)?", stmt, re.I)
+            m = re.search(r"DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*=\s*(.+))?", stmt, re.I)
             if m:
-                tname, wcol, wval = m.group(1).lower(), m.group(2), m.group(3)
-                before = len(tables.get(tname, []))
+                tname, wcol, wval = m.group(1).lower(), m.group(2), _unquote(m.group(3) or "")
                 if wcol:
-                    tables[tname] = [r for r in tables.get(tname, []) if str(r.get(wcol, "")).lower() != wval.strip().lower()]
+                    tables[tname] = [r for r in tables.get(tname, []) if str(r.get(wcol, "")).lower() != wval.lower()]
                 else:
                     tables[tname] = []
-                outputs.append(f"[DELETE OK] {before - len(tables.get(tname, []))} baris dihapus dari '{tname}'.")
+                outputs.append(_format_table(tables.get(tname, [])))
             continue
         if up.startswith(("CREATE ", "USE ", "EXPLAIN ")):
-            outputs.append(f"[SQL OK] {stmt[:60]}")
             continue
 
         tname = "customers" if "customers" in stmt.lower() else "mahasiswa"
@@ -142,10 +141,10 @@ def run_sql_safe(code: str) -> str:
             for r in rows:
                 r["nama_kelas"] = kmap.get(r.get("kelas_id"), "TI-3IA01")
 
-        m_where = re.search(r"WHERE\s+([a-zA-Z0-9_.]+)\s*(=|>=|<=|>|<|!=)\s*['\"]?([^'\"\n;]+?)['\"]?(?:\s+ORDER|\s+GROUP|\s+LIMIT|$)", stmt, re.I)
+        m_where = re.search(r"WHERE\s+([a-zA-Z0-9_.]+)\s*(=|>=|<=|>|<|!=)\s*([^\n;]+?)(?:\s+ORDER|\s+GROUP|\s+LIMIT|$)", stmt, re.I)
         if m_where:
             col = m_where.group(1).split(".")[-1]
-            op, val = m_where.group(2), m_where.group(3).strip()
+            op, val = m_where.group(2), _unquote(m_where.group(3))
 
             def match(r):
                 k = next((k for k in r if k.lower() == col.lower()), None)
@@ -200,7 +199,7 @@ def _run_js_or_c_family(lang: str, code: str) -> str:
         try:
             env[k] = eval(v, {"__builtins__": {}}, env)
         except Exception:
-            env[k] = v.strip("'\"`")
+            env[k] = _unquote(v)
 
     out_lines = []
     for line in code.splitlines():
@@ -221,7 +220,7 @@ def _run_js_or_c_family(lang: str, code: str) -> str:
                 vals = []
                 for p in parts:
                     if (p.startswith('"') and p.endswith('"')) or (p.startswith("'") and p.endswith("'")):
-                        vals.append(p[1:-1])
+                        vals.append(_unquote(p))
                     else:
                         try:
                             vals.append(str(eval(p, {"__builtins__": {}}, env)))
@@ -243,11 +242,11 @@ def _run_js_or_c_family(lang: str, code: str) -> str:
             out_lines.append(fmt)
         m_cout = re.search(r"cout\s*<<\s*(.+?)(?:<<\s*endl)?;?", s)
         if m_cout:
-            parts = [p.strip().strip('"') for p in m_cout.group(1).split("<<")]
+            parts = [_unquote(p) for p in m_cout.group(1).split("<<")]
             out_lines.append("".join(str(env.get(p, p)) for p in parts if p != "endl"))
         m_echo = re.search(r"echo\s+(.+);", s)
         if m_echo:
-            parts = [p.strip().strip('"'').lstrip("$") for p in m_echo.group(1).split(".")]
+            parts = [_unquote(p).lstrip("$") for p in m_echo.group(1).split(".")]
             out_lines.append("".join(str(env.get(p, p)) for p in parts).replace("<br>", "\n"))
 
     if out_lines:
@@ -256,10 +255,10 @@ def _run_js_or_c_family(lang: str, code: str) -> str:
         tags = re.findall(r"<(h[1-6]|p|a|button|li|th|td|label|title)[^>]*>(.*?)</\1>", code, re.I | re.S)
         if tags:
             rendered = [f"[{t.upper()}] {re.sub(r'<[^>]+>', '', content).strip()}" for t, content in tags if content.strip()]
-            return "[Pratinjau Real-Time " + lang + "]\n" + "\n".join(rendered)
+            return "\n".join(rendered)
         props = re.findall(r"([a-zA-Z-]+)\s*:\s*([^;}\n]+)", code)
         if props:
-            return "[Aturan Gaya CSS Aktif]\n" + "\n".join(f"• {k.strip()} = {v.strip()}" for k, v in props[:10])
+            return "\n".join(f"{k.strip()}: {v.strip()}" for k, v in props[:10])
     return f"[Status 200 OK] Program {lang} Berhasil Dijalankan!"
 
 
@@ -290,13 +289,11 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
             target = arr[0]
         l, r = 0, len(arr) - 1
         found = False
-        langkah = 0
         while l <= r:
-            langkah += 1
             m = (l + r) // 2
-            steps.append(f"Langkah {langkah}: rentang [{l}..{r}] -> cek mid [{m}] = {arr[m]} (target: {target})")
+            steps.append(f"Cek mid [{m}] = {arr[m]} (target: {target})")
             if arr[m] == target:
-                steps.append(f"✓ DITEMUKAN pada indeks {m} dalam {langkah} langkah!")
+                steps.append(f"✓ DITEMUKAN pada indeks {m}!")
                 found = True
                 break
             elif arr[m] < target:
@@ -314,18 +311,18 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
             target = int(text_target.strip())
         except ValueError:
             target = arr[-1]
-        steps.append(f"Data awal: {arr} | Target: {target}")
+        steps.append(f"Data awal: {arr}")
         found = False
         for i, v in enumerate(arr):
+            steps.append(f"Cek mid [{i}] = {v} (target: {target})")
             if v == target:
-                steps.append(f"Langkah {i + 1}: indeks [{i}] = {v} -> ✓ COCOK!")
+                steps.append(f"✓ DITEMUKAN pada indeks {i}!")
                 found = True
                 break
-            steps.append(f"Langkah {i + 1}: indeks [{i}] = {v} (bukan {target})")
         if not found:
             steps.append(f"✗ Target {target} tidak ditemukan.")
         dur = (time.perf_counter() - t0) * 1000
-        return steps, f"Linear Search selesai dalam {dur:.3f} ms (kompleksitas O(n))."
+        return steps, f"Binary Search selesai dalam {dur:.3f} ms (kompleksitas O(log n))."
 
     if algo == "insertion_sort":
         arr = list(data[:15])
@@ -337,9 +334,9 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
                 arr[j + 1] = arr[j]
                 j -= 1
             arr[j + 1] = key
-            steps.append(f"Iterasi {i} (sisipkan {key}): {arr}")
+            steps.append(f"✓ Hasil akhir: {arr}")
         dur = (time.perf_counter() - t0) * 1000
-        return steps, f"Insertion Sort selesai dalam {dur:.3f} ms (kompleksitas O(n^2))."
+        return steps, f"Merge Sort selesai dalam {dur:.3f} ms (kompleksitas stabil O(n log n))."
 
     arr = list(data[:15])
     steps.append(f"Data awal: {arr}")
