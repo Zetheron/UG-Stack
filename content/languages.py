@@ -45,13 +45,13 @@ LANGS = [
 ]
 
 BY_KEY = {l["key"]: l for l in LANGS}
-_ALIASES = {"js": "javascript", "c++": "cpp", "c#": "csharp", "reactjs": "react", "react.js": "react",
-            "front end": "html", "frontend": "html"}
+_ALIASES = {"js": "javascript", "jquery": "javascript", "c++": "cpp", "c#": "csharp", "reactjs": "react",
+            "react.js": "react", "front end": "html", "frontend": "html"}
 _SUFFIXES = (" tutorial", " reference", " examples", " example", " certificate", " quiz")
 
 
 def find_lang(name):
-    """Cari bahasa dari nama bebas ("Python Tutorial", "JS", "C++", "JAVASCRIPT"). None bila tidak ada."""
+    """Cari bahasa dari nama bebas ("Python Tutorial", "JS", "jQuery", "C++"). None bila tidak ada."""
     if not name:
         return None
     n = name.strip().lower()

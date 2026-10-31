@@ -180,7 +180,7 @@ def main(page: ft.Page):
         go("auth", mode=mode, role=role)
 
     def open_dashboard():
-        go("dashboard")
+        go("admin" if (state.get("user") or {}).get("role") == "admin" else "dashboard")
 
     def open_lang(key, idx=0):
         go("lesson", lang=key, idx=idx)
@@ -296,7 +296,6 @@ def main(page: ft.Page):
             return get_roadmap_view(page, mobile, open_lang)
         if view == "chat":
             return create_chat_view(page, mobile, open_lang)
-
         if view == "info":
             return get_info_view(page, args.get("key", "tentang"), mobile, open_home)
         if view == "plans":

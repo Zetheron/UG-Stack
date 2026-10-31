@@ -1,4 +1,4 @@
-"""Simulator Eksekusi Python, SQL, Web & Visualizer Algoritma Step-by-Step."""
+"""Simulator Eksekusi Real-Time (Python, SQL, JS, C/C++/Java/C#/PHP, HTML/CSS/React) & Visualizer Algoritma."""
 import ast
 import io
 import re
@@ -7,22 +7,39 @@ import time
 _SAFE_BUILTINS = {
     "abs": abs, "all": all, "any": any, "bin": bin, "bool": bool, "chr": chr,
     "dict": dict, "divmod": divmod, "enumerate": enumerate, "filter": filter,
-    "float": float, "format": format, "hex": hex, "int": int, "isinstance": isinstance,
-    "len": len, "list": list, "map": map, "max": max, "min": min, "ord": ord,
-    "pow": pow, "range": range, "reversed": reversed, "round": round, "set": set,
-    "sorted": sorted, "str": str, "sum": sum, "tuple": tuple, "zip": zip,
+    "float": float, "format": format, "frozenset": frozenset, "hex": hex,
+    "int": int, "isinstance": isinstance, "len": len, "list": list, "map": map,
+    "max": max, "min": min, "oct": oct, "ord": ord, "pow": pow, "range": range,
+    "reversed": reversed, "round": round, "set": set, "slice": slice,
+    "sorted": sorted, "str": str, "sum": sum, "tuple": tuple, "type": type, "zip": zip,
     "True": True, "False": False, "None": None,
 }
 
-_SAMPLE_ROWS = [
-    {"id": 1, "npm": "50421001", "nama": "Dina Putri", "prodi": "Informatika", "ipk": 3.85, "Country": "Indonesia", "CustomerName": "Dina Putri"},
-    {"id": 2, "npm": "50421002", "nama": "Budi Santoso", "prodi": "Sistem Informasi", "ipk": 3.60, "Country": "Indonesia", "CustomerName": "Budi Santoso"},
-    {"id": 3, "npm": "50421003", "nama": "Siti Rahma", "prodi": "Informatika", "ipk": 3.92, "Country": "Indonesia", "CustomerName": "Siti Rahma"},
-    {"id": 4, "npm": "50421004", "nama": "Andi Wijaya", "prodi": "Teknik Komputer", "ipk": 3.45, "Country": "Singapore", "CustomerName": "Andi Wijaya"},
-]
+_SAMPLE_TABLES = {
+    "mahasiswa": [
+        {"id": 1, "npm": "50421001", "nama": "Dina Putri", "prodi": "Informatika", "ipk": 3.85, "kelas_id": 1},
+        {"id": 2, "npm": "50421002", "nama": "Budi Santoso", "prodi": "Sistem Informasi", "ipk": 3.60, "kelas_id": 2},
+        {"id": 3, "npm": "50421003", "nama": "Siti Rahma", "prodi": "Informatika", "ipk": 3.92, "kelas_id": 1},
+        {"id": 4, "npm": "50421004", "nama": "Andi Wijaya", "prodi": "Teknik Komputer", "ipk": 3.40, "kelas_id": 3},
+        {"id": 5, "npm": "50421005", "nama": "Rizky Pratama", "prodi": "Informatika", "ipk": 3.75, "kelas_id": 1},
+    ],
+    "customers": [
+        {"CustomerID": 1, "CustomerName": "PT Nusantara Jaya", "City": "Jakarta", "Country": "Indonesia"},
+        {"CustomerID": 2, "CustomerName": "CV Kreatif Digital", "City": "Depok", "Country": "Indonesia"},
+        {"CustomerID": 3, "CustomerName": "UD Maju Bersama", "City": "Bandung", "Country": "Indonesia"},
+        {"CustomerID": 4, "CustomerName": "Global Tech Ltd", "City": "Singapore", "Country": "Singapore"},
+    ],
+    "kelas": [
+        {"id": 1, "nama_kelas": "TI-3IA01"},
+        {"id": 2, "nama_kelas": "SI-3KA02"},
+        {"id": 3, "nama_kelas": "TK-3DC01"},
+    ],
+}
 
 
 def run_python_safe(code: str) -> str:
+    if not (code or "").strip():
+        return "[Program selesai dijalankan tanpa output print()]"
     try:
         tree = ast.parse(code, mode="exec")
     except SyntaxError as e:
@@ -32,16 +49,18 @@ def run_python_safe(code: str) -> str:
             return "[Keamanan Sandbox] Import/sistem dinonaktifkan di simulator web."
         if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             return "[Keamanan Sandbox] Akses atribut internal tidak diizinkan."
+        if isinstance(node, ast.Name) and node.id.startswith("__"):
+            return "[Keamanan Sandbox] Akses nama internal tidak diizinkan."
     buf = io.StringIO()
-    lines_cnt = {"n": 0}
+    state = {"lines": 0}
 
     def p(*args, sep=" ", end="\n"):
-        lines_cnt["n"] += 1
-        if lines_cnt["n"] > 150:
-            raise RuntimeError("Batas output terlampaui (maks. 150 baris).")
+        state["lines"] += 1
+        if state["lines"] > 150:
+            raise RuntimeError("Batas baris output terlampaui.")
         buf.write(sep.join(str(a) for a in args) + end)
 
-    safe_env = {"__builtins__": dict(_SAFE_BUILTINS, print=p, input=lambda prompt="": "Mahasiswa_UG")}
+    safe_env = {"__builtins__": dict(_SAFE_BUILTINS, print=p, input=lambda prompt="": "20")}
     try:
         exec(compile(tree, "<sandbox>", "exec"), safe_env, safe_env)
     except Exception as e:
@@ -50,31 +69,207 @@ def run_python_safe(code: str) -> str:
     return res if res else "[Program selesai dijalankan tanpa output print()]"
 
 
+def _format_table(rows: list[dict], cols: list[str] | None = None) -> str:
+    if not rows:
+        return "0 baris ditemukan."
+    keys = cols or list(rows[0].keys())
+    widths = {k: max(len(str(k)), max((len(str(r.get(k, ""))) for r in rows), default=0)) for k in keys}
+    header = " | ".join(f"{k:<{widths[k]}}" for k in keys)
+    sep = "-+-".join("-" * widths[k] for k in keys)
+    lines = [header, sep]
+    for r in rows:
+        lines.append(" | ".join(f"{str(r.get(k, '')):<{widths[k]}}" for k in keys))
+    lines.append(f"\n({len(rows)} baris hasil query real-time)")
+    return "\n".join(lines)
+
+
+def run_sql_safe(code: str) -> str:
+    if not (code or "").strip():
+        return "0 baris ditemukan."
+    statements = [s.strip() for s in code.strip().split(";") if s.strip()]
+    tables = {k: [dict(r) for r in v] for k, v in _SAMPLE_TABLES.items()}
+    outputs = []
+    for stmt in statements:
+        up = stmt.upper()
+        if up.startswith("INSERT INTO"):
+            m = re.search(r"INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)", stmt, re.I)
+            if m:
+                tname = m.group(1).lower()
+                cols = [c.strip() for c in m.group(2).split(",")]
+                vals = [v.strip().strip("'\"") for v in m.group(3).split(",")]
+                row = {"id": len(tables.get(tname, [])) + 1}
+                for c, v in zip(cols, vals):
+                    try:
+                        row[c] = float(v) if "." in v else int(v)
+                    except ValueError:
+                        row[c] = v
+                tables.setdefault(tname, []).append(row)
+                outputs.append(f"[INSERT OK] 1 baris ditambahkan ke '{tname}': {row}")
+            continue
+        if up.startswith("UPDATE"):
+            m = re.search(r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*['\"]?([^'\"\s]+)['\"]?(?:\s+WHERE\s+(\w+)\s*=\s*['\"]?([^'\"]+)['\"]?)?", stmt, re.I)
+            if m:
+                tname, scol, sval, wcol, wval = m.group(1).lower(), m.group(2), m.group(3), m.group(4), m.group(5)
+                cnt = 0
+                for r in tables.get(tname, []):
+                    if not wcol or str(r.get(wcol, "")).lower() == wval.strip().lower():
+                        try:
+                            r[scol] = float(sval) if "." in sval else int(sval)
+                        except ValueError:
+                            r[scol] = sval
+                        cnt += 1
+                outputs.append(f"[UPDATE OK] {cnt} baris diperbarui pada '{tname}'.")
+            continue
+        if up.startswith("DELETE"):
+            m = re.search(r"DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*=\s*['\"]?([^'\"]+)['\"]?)?", stmt, re.I)
+            if m:
+                tname, wcol, wval = m.group(1).lower(), m.group(2), m.group(3)
+                before = len(tables.get(tname, []))
+                if wcol:
+                    tables[tname] = [r for r in tables.get(tname, []) if str(r.get(wcol, "")).lower() != wval.strip().lower()]
+                else:
+                    tables[tname] = []
+                outputs.append(f"[DELETE OK] {before - len(tables.get(tname, []))} baris dihapus dari '{tname}'.")
+            continue
+        if up.startswith(("CREATE ", "USE ", "EXPLAIN ")):
+            outputs.append(f"[SQL OK] {stmt[:60]}")
+            continue
+
+        tname = "customers" if "customers" in stmt.lower() else "mahasiswa"
+        rows = [dict(r) for r in tables.get(tname, tables["mahasiswa"])]
+        if "join" in stmt.lower() and tname == "mahasiswa":
+            kmap = {k["id"]: k["nama_kelas"] for k in tables["kelas"]}
+            for r in rows:
+                r["nama_kelas"] = kmap.get(r.get("kelas_id"), "TI-3IA01")
+
+        m_where = re.search(r"WHERE\s+([a-zA-Z0-9_.]+)\s*(=|>=|<=|>|<|!=)\s*['\"]?([^'\"\n;]+?)['\"]?(?:\s+ORDER|\s+GROUP|\s+LIMIT|$)", stmt, re.I)
+        if m_where:
+            col = m_where.group(1).split(".")[-1]
+            op, val = m_where.group(2), m_where.group(3).strip()
+
+            def match(r):
+                k = next((k for k in r if k.lower() == col.lower()), None)
+                if k is None:
+                    return True
+                rv = r[k]
+                try:
+                    cv = float(val) if isinstance(rv, (int, float)) else val
+                except ValueError:
+                    cv = val
+                if op == "=": return str(rv).lower() == str(cv).lower()
+                if op == "!=": return str(rv).lower() != str(cv).lower()
+                if op == ">=": return rv >= cv
+                if op == "<=": return rv <= cv
+                if op == ">": return rv > cv
+                if op == "<": return rv < cv
+                return True
+
+            rows = [r for r in rows if match(r)]
+
+        m_order = re.search(r"ORDER\s+BY\s+([a-zA-Z0-9_.]+)(?:\s+(ASC|DESC))?", stmt, re.I)
+        if m_order and rows:
+            ocol = m_order.group(1).split(".")[-1]
+            desc = (m_order.group(2) or "").upper() == "DESC"
+            k = next((k for k in rows[0] if k.lower() == ocol.lower()), None)
+            if k:
+                rows.sort(key=lambda r: r[k], reverse=desc)
+
+        m_limit = re.search(r"LIMIT\s+(\d+)", stmt, re.I)
+        if m_limit:
+            rows = rows[:int(m_limit.group(1))]
+
+        m_sel = re.search(r"SELECT\s+(.+?)\s+FROM", stmt, re.I | re.S)
+        sel_cols = None
+        if m_sel and rows:
+            raw_cols = m_sel.group(1).strip()
+            if raw_cols != "*" and "count(" not in raw_cols.lower():
+                wanted = [c.strip().split(".")[-1].split(" ")[0] for c in raw_cols.split(",")]
+                valid = [next((k for k in rows[0] if k.lower() == w.lower()), None) for w in wanted]
+                sel_cols = [v for v in valid if v]
+
+        outputs.append(_format_table(rows, sel_cols))
+    return "\n\n".join(outputs) if outputs else _format_table(tables["mahasiswa"])
+
+
+def _run_js_or_c_family(lang: str, code: str) -> str:
+    env = {}
+    for m in re.finditer(r"(?:const|let|var|int|double|float|string|String|bool|boolean)?\s*\$?([a-zA-Z_]\w*)\s*=\s*([^;\n]+)", code):
+        k, v = m.group(1), m.group(2).strip()
+        if k in ("if", "for", "while", "return", "function"):
+            continue
+        try:
+            env[k] = eval(v, {"__builtins__": {}}, env)
+        except Exception:
+            env[k] = v.strip("'\"`")
+
+    out_lines = []
+    for line in code.splitlines():
+        s = line.strip()
+        if not s or s.startswith(("//", "/*", "*")):
+            continue
+        m_log = re.search(r"(?:console\.log|System\.out\.println|Console\.WriteLine)\((.+)\)", s)
+        if m_log:
+            arg = m_log.group(1).strip()
+            if arg.startswith("`") and arg.endswith("`"):
+                txt = re.sub(r"\$\{([^}]+)\}", lambda m: str(eval(m.group(1), {"__builtins__": {}}, env)), arg[1:-1])
+                out_lines.append(txt)
+            elif arg.startswith('$"') and arg.endswith('"'):
+                txt = re.sub(r"\{([^}]+)\}", lambda m: str(eval(m.group(1), {"__builtins__": {}}, env)), arg[2:-1])
+                out_lines.append(txt)
+            else:
+                parts = [p.strip() for p in re.split(r",|\+", arg)]
+                vals = []
+                for p in parts:
+                    if (p.startswith('"') and p.endswith('"')) or (p.startswith("'") and p.endswith("'")):
+                        vals.append(p[1:-1])
+                    else:
+                        try:
+                            vals.append(str(eval(p, {"__builtins__": {}}, env)))
+                        except Exception:
+                            vals.append(str(env.get(p, p)))
+                out_lines.append(" ".join(vals))
+        m_printf = re.search(r'printf\(\s*"([^"]*)"(?:\s*,\s*(.+))?\)', s)
+        if m_printf:
+            fmt, rest = m_printf.group(1).replace("\\n", ""), m_printf.group(2)
+            if rest:
+                args = [a.strip().lstrip("&*") for a in rest.split(",")]
+                for a in args:
+                    val = env.get(a, a)
+                    try:
+                        val = eval(a, {"__builtins__": {}}, env)
+                    except Exception:
+                        pass
+                    fmt = re.sub(r"%[dfsc]", str(val), fmt, count=1)
+            out_lines.append(fmt)
+        m_cout = re.search(r"cout\s*<<\s*(.+?)(?:<<\s*endl)?;?", s)
+        if m_cout:
+            parts = [p.strip().strip('"') for p in m_cout.group(1).split("<<")]
+            out_lines.append("".join(str(env.get(p, p)) for p in parts if p != "endl"))
+        m_echo = re.search(r"echo\s+(.+);", s)
+        if m_echo:
+            parts = [p.strip().strip('"'').lstrip("$") for p in m_echo.group(1).split(".")]
+            out_lines.append("".join(str(env.get(p, p)) for p in parts).replace("<br>", "\n"))
+
+    if out_lines:
+        return "\n".join(out_lines)
+    if lang in ("HTML", "CSS", "React"):
+        tags = re.findall(r"<(h[1-6]|p|a|button|li|th|td|label|title)[^>]*>(.*?)</\1>", code, re.I | re.S)
+        if tags:
+            rendered = [f"[{t.upper()}] {re.sub(r'<[^>]+>', '', content).strip()}" for t, content in tags if content.strip()]
+            return "[Pratinjau Real-Time " + lang + "]\n" + "\n".join(rendered)
+        props = re.findall(r"([a-zA-Z-]+)\s*:\s*([^;}\n]+)", code)
+        if props:
+            return "[Aturan Gaya CSS Aktif]\n" + "\n".join(f"• {k.strip()} = {v.strip()}" for k, v in props[:10])
+    return f"[Status 200 OK] Program {lang} Berhasil Dijalankan!"
+
+
 def run_code(lang: str, code: str) -> str:
     l = (lang or "Python").strip()
-    low = l.lower()
-    if low == "python":
+    if l.lower() == "python":
         return run_python_safe(code)
-    if "sql" in low:
-        rows = list(_SAMPLE_ROWS)
-        if "ipk >= 3.5" in code.lower():
-            rows = [r for r in rows if r["ipk"] >= 3.5]
-        elif "country='indonesia'" in code.lower().replace(" ", ""):
-            rows = [r for r in rows if r["Country"] == "Indonesia"]
-        lines = ["ID | NPM      | Nama Mahasiswa   | Prodi            | IPK", "---+----------+------------------+------------------+-----"]
-        for r in rows:
-            lines.append(f" {r['id']} | {r['npm']} | {r['nama']:<16} | {r['prodi']:<16} | {r['ipk']:.2f}")
-        lines.append(f"\n({len(rows)} baris ditemukan)")
-        return "\n".join(lines)
-    if low == "javascript":
-        logs = re.findall(r"console\.log\((.*?)\)", code)
-        if logs:
-            return "\n".join(x.strip("'\"`") for x in logs)
-    if low in ("c", "c++", "java", "c#", "php"):
-        prints = re.findall(r'(?:printf|cout\s*<<|println|WriteLine|echo)\s*\(?\s*"([^"]*)"', code)
-        if prints:
-            return "\n".join(p.replace("\\n", "\n") for p in prints)
-    return f"[Status 200 OK] Program {l} Berhasil Dijalankan!"
+    if l.lower() in ("sql", "mysql"):
+        return run_sql_safe(code)
+    return _run_js_or_c_family(l, code or "")
 
 
 def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tuple[list[str], str]:
@@ -95,11 +290,13 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
             target = arr[0]
         l, r = 0, len(arr) - 1
         found = False
+        langkah = 0
         while l <= r:
+            langkah += 1
             m = (l + r) // 2
-            steps.append(f"Cek mid [{m}] = {arr[m]} (target: {target})")
+            steps.append(f"Langkah {langkah}: rentang [{l}..{r}] -> cek mid [{m}] = {arr[m]} (target: {target})")
             if arr[m] == target:
-                steps.append(f"✓ DITEMUKAN pada indeks {m}!")
+                steps.append(f"✓ DITEMUKAN pada indeks {m} dalam {langkah} langkah!")
                 found = True
                 break
             elif arr[m] < target:
@@ -117,14 +314,14 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
             target = int(text_target.strip())
         except ValueError:
             target = arr[-1]
-        steps.append(f"Data: {arr} | Target: {target}")
+        steps.append(f"Data awal: {arr} | Target: {target}")
         found = False
         for i, v in enumerate(arr):
-            steps.append(f"Cek indeks [{i}] = {v}")
             if v == target:
-                steps.append(f"✓ DITEMUKAN pada indeks {i}!")
+                steps.append(f"Langkah {i + 1}: indeks [{i}] = {v} -> ✓ COCOK!")
                 found = True
                 break
+            steps.append(f"Langkah {i + 1}: indeks [{i}] = {v} (bukan {target})")
         if not found:
             steps.append(f"✗ Target {target} tidak ditemukan.")
         dur = (time.perf_counter() - t0) * 1000
@@ -140,7 +337,7 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
                 arr[j + 1] = arr[j]
                 j -= 1
             arr[j + 1] = key
-            steps.append(f"Sisipkan {key}: {arr}")
+            steps.append(f"Iterasi {i} (sisipkan {key}): {arr}")
         dur = (time.perf_counter() - t0) * 1000
         return steps, f"Insertion Sort selesai dalam {dur:.3f} ms (kompleksitas O(n^2))."
 

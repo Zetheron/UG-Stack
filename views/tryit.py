@@ -1,4 +1,4 @@
-"""Halaman Simulasi: Live Code Sandbox (Python/SQL/Web) & Visualizer Algoritma Step-by-Step."""
+"""Halaman Simulasi Real-Time: Live Code Sandbox & Visualizer Algoritma Step-by-Step."""
 import flet as ft
 from components.code_editor import SAMPLES
 from components.ui import GREEN, card, chip, green_button, pad, page_banner, section_heading
@@ -6,7 +6,6 @@ from services import simulator
 
 
 def get_tryit_view(*args, **kwargs) -> ft.Control:
-    """Mendukung pemanggilan get_tryit_view(lang, on_back, code) maupun get_tryit_view(page, ...)."""
     page = kwargs.get("page")
     lang_name = kwargs.get("lang_name", kwargs.get("lang", "Python"))
     initial_code = kwargs.get("initial_code", kwargs.get("code", None))
@@ -30,6 +29,23 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
             on_back_click = rem.pop(0)
 
     lang_key = lang_name if lang_name in SAMPLES else "Python"
+    output_text = ft.Text(
+        "",
+        font_family="monospace",
+        size=13,
+        color="#00FF66",
+        selectable=True,
+    )
+
+    def run_editor(e=None):
+        chosen = lang_dd.value or "Python"
+        output_text.value = simulator.run_code(chosen, code_tf.value or "")
+        try:
+            if getattr(output_text, "page", None):
+                output_text.update()
+        except Exception:
+            pass
+
     code_tf = ft.TextField(
         value=initial_code if initial_code else SAMPLES.get(lang_key, SAMPLES["Python"]),
         multiline=True,
@@ -37,6 +53,7 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
         max_lines=15,
         text_style=ft.TextStyle(font_family="monospace", size=13),
         border_radius=8,
+        on_change=run_editor,
     )
     lang_dd = ft.Dropdown(
         label="Bahasa",
@@ -44,35 +61,20 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
         width=180,
         options=[ft.dropdown.Option(k, k) for k in SAMPLES.keys()],
     )
-    output_text = ft.Text(
-        simulator.run_code(lang_key, code_tf.value),
-        font_family="monospace",
-        size=13,
-        color="#00FF66",
-        selectable=True,
-    )
+    output_text.value = simulator.run_code(lang_key, code_tf.value)
 
     def on_lang_change(e):
         chosen = lang_dd.value or "Python"
         code_tf.value = SAMPLES.get(chosen, SAMPLES["Python"])
         output_text.value = simulator.run_code(chosen, code_tf.value)
         try:
-            code_tf.update()
-            output_text.update()
+            if getattr(output_text, "page", None):
+                code_tf.update()
+                output_text.update()
         except Exception:
-            if page:
-                page.update()
+            pass
 
     lang_dd.on_change = on_lang_change
-
-    def run_editor(e):
-        chosen = lang_dd.value or "Python"
-        output_text.value = simulator.run_code(chosen, code_tf.value or "")
-        try:
-            output_text.update()
-        except Exception:
-            if page:
-                page.update()
 
     algo_dd = ft.Dropdown(
         label="Level",
@@ -80,7 +82,9 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
         width=220,
         options=[
             ft.dropdown.Option("binary_search", "Binary Search O(log n)"),
+            ft.dropdown.Option("linear_search", "Linear Search O(n)"),
             ft.dropdown.Option("merge_sort", "Merge Sort O(n log n)"),
+            ft.dropdown.Option("insertion_sort", "Insertion Sort O(n^2)"),
         ],
     )
     arr_tf = ft.TextField(label="Judul modul", value="42, 15, 8, 99, 23, 4, 16, 55", expand=True)
@@ -111,12 +115,15 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
         except Exception:
             pass
 
+    algo_dd.on_change = run_algo
+    arr_tf.on_change = run_algo
+    target_tf.on_change = run_algo
     run_algo()
 
     def handle_back(e):
         if callable(on_back_click):
             try:
-                on_back_click("home")
+                on_back_click("exercises")
             except TypeError:
                 try:
                     on_back_click(e)
@@ -129,7 +136,7 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
             padding=pad(mobile),
             content=ft.Column([
                 ft.Row([
-                    ft.TextButton("❮ Kembali ke Beranda", on_click=handle_back),
+                    ft.TextButton("❮ Semua quiz", on_click=handle_back),
                     chip("Try Spaces", "#D9EEE1"),
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
                 card(ft.Column([
@@ -141,7 +148,7 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
                         bgcolor="#1E1F26",
                         padding=15,
                         border_radius=8,
-                        content=ft.Row([output_text], scroll=ft.ScrollMode.AUTO),
+                        content=ft.Column([output_text], spacing=0),
                     ),
                 ], spacing=10)),
                 card(ft.Column([
