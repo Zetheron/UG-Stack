@@ -54,14 +54,14 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
         body = ft.Column(controls, spacing=10)
         note = ft.Text(translate(STATUS_TEXT.get(cached_status, ""), ui_lang), size=11, color=ft.colors.ON_SURFACE_VARIANT)
         return ft.Container(
-            col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=16, border_radius=12,
-            border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
+            col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=20, border_radius=12,
+            border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
             content=ft.Column([
                 ft.Text(f"{emoji} {translate(title, ui_lang)}", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
-                ft.Divider(height=6),
+                ft.Divider(height=6, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
                 body, note,
                 link_text(translate(f"Sumber: {source_label} ↗", ui_lang), source_url, size=11, color=ft.colors.ON_SURFACE_VARIANT),
-            ], spacing=6))
+            ], spacing=8))
 
     body = ft.Column([loading_row()], spacing=10)
     note = ft.Text("", size=11, color=ft.colors.ON_SURFACE_VARIANT)
@@ -93,14 +93,14 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
 
     schedule(page, work)
     return ft.Container(
-        col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=16, border_radius=12,
-        border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
+        col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=20, border_radius=12,
+        border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
         content=ft.Column([
             ft.Text(f"{emoji} {title}", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
-            ft.Divider(height=6),
+            ft.Divider(height=6, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
             body, note,
             link_text(f"Sumber: {source_label} ↗", source_url, size=11, color=ft.colors.ON_SURFACE_VARIANT),
-        ], spacing=6))
+        ], spacing=8))
 
 
 def r_wiki(i):
@@ -134,9 +134,10 @@ def r_doc(i):
 
 def static_panel(title: str, emoji: str, items: list, col=None) -> ft.Container:
     return ft.Container(
-        col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=16, border_radius=12,
-        border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
-        content=ft.Column([ft.Text(f"{emoji} {title}", size=16, weight=ft.FontWeight.BOLD), ft.Divider(height=6),
+        col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=20, border_radius=12,
+        border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
+        content=ft.Column([ft.Text(f"{emoji} {title}", size=16, weight=ft.FontWeight.BOLD),
+                           ft.Divider(height=6, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
                            *[r_doc(i) for i in items]], spacing=10))
 
 
@@ -161,7 +162,7 @@ def language_live_section(page, lang: dict) -> ft.ResponsiveRow:
     if lang.get("mdn"):
         panels.insert(1, source_panel(page, f"Referensi MDN: {lang['name']}", "📘", "MDN Web Docs",
                                       "https://developer.mozilla.org", lambda: ws.mdn_search(lang["name"]), r_doc))
-    return ft.ResponsiveRow(panels, spacing=14, run_spacing=14)
+    return ft.ResponsiveRow(panels, spacing=16, run_spacing=16)
 
 
 def community_feed(page) -> ft.ResponsiveRow:
@@ -170,4 +171,4 @@ def community_feed(page) -> ft.ResponsiveRow:
                      lambda: ws.devto_articles(None, top=7, n=5), r_dev),
         source_panel(page, "Repositori Paling Berbintang", "⭐", "GitHub", "https://github.com",
                      lambda: ws.github_repos("stars:>100000", 5), r_gh),
-    ], spacing=14, run_spacing=14)
+    ], spacing=16, run_spacing=16)

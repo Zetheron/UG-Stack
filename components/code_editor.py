@@ -17,6 +17,12 @@ SAMPLES = {
 
 HOME_TABS = ("HTML", "CSS", "JavaScript", "Python", "SQL")
 
+_TAB_STYLE = ft.ButtonStyle(
+    shape=ft.RoundedRectangleBorder(radius=8),
+    padding=ft.padding.symmetric(horizontal=16, vertical=10),
+    elevation=0,
+)
+
 
 def create_editor_section(on_tryit_click=None):
     code_text = ft.Text(SAMPLES["HTML"], font_family="monospace", color="#00FF66", size=13, selectable=True)
@@ -30,7 +36,7 @@ def create_editor_section(on_tryit_click=None):
                 btn.bgcolor = "#04AA6D"
                 btn.color = ft.colors.WHITE
             else:
-                btn.bgcolor = ft.colors.with_opacity(0.35, ft.colors.OUTLINE)
+                btn.bgcolor = ft.colors.SURFACE
                 btn.color = ft.colors.ON_SURFACE
         code_text.update()
         tab_buttons.update()
@@ -48,47 +54,49 @@ def create_editor_section(on_tryit_click=None):
         ft.ElevatedButton(
             lang,
             on_click=lambda e, l=lang: change_tab(l),
-            bgcolor="#04AA6D" if i == 0 else ft.colors.with_opacity(0.35, ft.colors.OUTLINE),
+            bgcolor="#04AA6D" if i == 0 else ft.colors.SURFACE,
             color=ft.colors.WHITE if i == 0 else ft.colors.ON_SURFACE,
+            style=_TAB_STYLE,
         )
         for i, lang in enumerate(HOME_TABS)
     ], scroll=ft.ScrollMode.AUTO, spacing=8, alignment=ft.MainAxisAlignment.CENTER)
 
     return ft.Container(
         bgcolor=ft.colors.SURFACE_VARIANT,
-        padding=ft.padding.symmetric(vertical=35, horizontal=20),
+        padding=ft.padding.symmetric(vertical=32, horizontal=32),
         content=ft.Column(
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            spacing=12,
             controls=[
-                ft.Text("What do you want to learn?", size=28, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE, text_align=ft.TextAlign.CENTER),
-                ft.Text("Mulai latihan koding interaktif langsung di browser kamu.", color=ft.colors.ON_SURFACE_VARIANT, text_align=ft.TextAlign.CENTER),
-                ft.Container(height=10),
+                ft.Text("What do you want to learn?", size=26, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE, text_align=ft.TextAlign.CENTER),
+                ft.Text("Mulai latihan koding interaktif langsung di browser kamu.", size=14, color=ft.colors.ON_SURFACE_VARIANT, text_align=ft.TextAlign.CENTER),
                 tab_buttons,
-                ft.Container(height=15),
                 ft.Container(
                     bgcolor=ft.colors.SURFACE,
-                    border_radius=10,
-                    border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
-                    padding=20,
-                    content=ft.Column(horizontal_alignment=ft.CrossAxisAlignment.STRETCH, controls=[
+                    border_radius=12,
+                    border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
+                    padding=22,
+                    content=ft.Column(horizontal_alignment=ft.CrossAxisAlignment.STRETCH, spacing=12, controls=[
                         ft.Row([
-                            ft.Text("Code Example:", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE),
-                            ft.Container(expand=True),
-                            ft.Icon(ft.icons.CODE, color=ft.colors.ON_SURFACE_VARIANT)
-                        ]),
+                            ft.Text("Code Example:", weight=ft.FontWeight.BOLD, size=15, color=ft.colors.ON_SURFACE),
+                            ft.Icon(ft.icons.CODE, size=18, color=ft.colors.ON_SURFACE_VARIANT)
+                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                         ft.Container(
-                            bgcolor="#282A35",
-                            padding=15,
-                            border_radius=6,
+                            bgcolor="#1E1F26",
+                            padding=16,
+                            border_radius=8,
                             content=ft.Column([code_text], spacing=0)
                         ),
-                        ft.Container(height=10),
                         ft.Row([
                             ft.ElevatedButton(
                                 "Try it Yourself ❯",
                                 bgcolor="#04AA6D",
                                 color=ft.colors.WHITE,
-                                style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=25, vertical=15)),
+                                style=ft.ButtonStyle(
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=ft.padding.symmetric(horizontal=22, vertical=12),
+                                    elevation=0,
+                                ),
                                 on_click=handle_tryit
                             )
                         ])

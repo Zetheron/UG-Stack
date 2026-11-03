@@ -30,58 +30,80 @@ COURSES = [
     ("MySQL", "Relational database management system", "#E1F5FE"),
 ]
 
+
 def create_course_card(title, desc, color_bg, on_select_course=None):
     logo_src = LOGO_URLS.get(title, "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/code/code-original.svg")
 
     return ft.Container(
-        bgcolor=color_bg,
-        padding=25,
+        bgcolor=ft.colors.SURFACE,
+        padding=22,
         border_radius=12,
-        col={"xs": 12, "sm": 6, "lg": 3},
+        border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
+        col={"xs": 12, "sm": 6, "md": 4, "lg": 3},
+        on_click=lambda e: on_select_course(title) if on_select_course else None,
+        ink=True,
         content=ft.Column(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=8,
             controls=[
-                ft.Image(
-                    src=logo_src,
-                    width=55,
-                    height=55,
-                    fit=ft.ImageFit.CONTAIN
+                ft.Container(
+                    width=56,
+                    height=56,
+                    bgcolor=color_bg,
+                    border_radius=12,
+                    alignment=ft.alignment.center,
+                    content=ft.Image(src=logo_src, width=34, height=34, fit=ft.ImageFit.CONTAIN),
                 ),
-                ft.Container(height=5),
-                ft.Text(title, size=24, weight=ft.FontWeight.BOLD, color="#212121"),
-                ft.Text(desc, text_align=ft.TextAlign.CENTER, color="#424242", size=13),
-                ft.Container(height=10),
+                ft.Text(title, size=20, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE, text_align=ft.TextAlign.CENTER),
+                ft.Container(
+                    height=38,
+                    alignment=ft.alignment.center,
+                    content=ft.Text(desc, text_align=ft.TextAlign.CENTER, color=ft.colors.ON_SURFACE_VARIANT, size=12),
+                ),
                 ft.ElevatedButton(
                     f"Learn {title}",
                     bgcolor="#282A35",
                     color=ft.colors.WHITE,
-                    width=170,
-                    on_click=lambda e: on_select_course(title) if on_select_course else None
-                )
-            ]
-        )
+                    width=160,
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=8),
+                        padding=ft.padding.symmetric(horizontal=16, vertical=10),
+                        elevation=0,
+                    ),
+                    on_click=lambda e: on_select_course(title) if on_select_course else None,
+                ),
+            ],
+        ),
     )
+
 
 def create_courses_grid(on_select_course=None, on_more_courses=None):
     cards = [create_course_card(title, desc, bg, on_select_course) for title, desc, bg in COURSES]
-    
+
     return ft.Container(
-        padding=30,
+        padding=ft.padding.symmetric(vertical=32, horizontal=32),
         bgcolor=ft.colors.SURFACE,
-        content=ft.Column([
-            ft.Text("Popular Courses", size=32, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
-            ft.Container(height=15),
-            ft.ResponsiveRow(spacing=20, run_spacing=20, controls=cards),
-            ft.Container(height=20),
-            ft.Container(
-                alignment=ft.alignment.center,
-                content=ft.ElevatedButton(
-                    "And 40+ more ❯",
-                    bgcolor="#282A35",
-                    color=ft.colors.WHITE,
-                    style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=30, vertical=15)),
-                    on_click=lambda e: on_more_courses() if on_more_courses else None
-                )
-            )
-        ])
+        content=ft.Column(
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=16,
+            controls=[
+                ft.Text("Popular Courses", size=26, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE, text_align=ft.TextAlign.CENTER),
+                ft.ResponsiveRow(spacing=16, run_spacing=16, controls=cards),
+                ft.Container(
+                    padding=ft.padding.only(top=8),
+                    alignment=ft.alignment.center,
+                    content=ft.ElevatedButton(
+                        "And 40+ more ❯",
+                        bgcolor="#04AA6D",
+                        color=ft.colors.WHITE,
+                        style=ft.ButtonStyle(
+                            shape=ft.RoundedRectangleBorder(radius=8),
+                            padding=ft.padding.symmetric(horizontal=24, vertical=12),
+                            elevation=0,
+                        ),
+                        on_click=lambda e: on_more_courses() if on_more_courses else None,
+                    ),
+                ),
+            ],
+        ),
     )

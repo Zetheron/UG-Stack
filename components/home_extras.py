@@ -14,21 +14,50 @@ def snippet_of_the_day(page, on_open_lesson, on_tryit):
     key, idx, lesson = items[date.today().toordinal() % len(items)]
     lang = BY_KEY[key]
     return ft.Container(
-        padding=ft.padding.symmetric(horizontal=20, vertical=10),
-        content=card(ft.Column([
-            ft.Row([ft.Text("💡 Kode Hari Ini", size=20, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
-                    chip(lang["name"]), chip(lesson["title"], "#E7F9F0")], wrap=True, spacing=8),
-            code_block(page, lesson["code"], f"{lang['name']} - {lesson['title']}"),
-            ft.Row([green_button("Try it Yourself ❯", lambda e: on_tryit(lang["name"], lesson["code"])),
-                    ft.TextButton("Pelajari pelajarannya ❯", on_click=lambda e: on_open_lesson(key, idx))], wrap=True, spacing=8),
-        ], spacing=10), bg=ft.colors.SURFACE_VARIANT))
+        padding=ft.padding.symmetric(horizontal=32, vertical=12),
+        content=card(
+            ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Text("💡 Kode Hari Ini", size=19, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+                            ft.Row([chip(lang["name"]), chip(lesson["title"], "#E7F9F0")], spacing=8, wrap=True),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        wrap=True,
+                    ),
+                    code_block(page, lesson["code"], f"{lang['name']} - {lesson['title']}"),
+                    ft.Row(
+                        [
+                            green_button("Try it Yourself ❯", lambda e: on_tryit(lang["name"], lesson["code"])),
+                            ft.TextButton("Pelajari pelajarannya ❯", on_click=lambda e: on_open_lesson(key, idx)),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        wrap=True,
+                    ),
+                ],
+                spacing=14,
+            ),
+            bg=ft.colors.SURFACE,
+        ),
+    )
 
 
 def live_community_section(page):
     return ft.Container(
-        padding=ft.padding.symmetric(horizontal=20, vertical=20),
-        content=ft.Column([
-            section_heading("🔥 Sedang Ramai di Komunitas Developer"),
-            ft.Text("Diambil langsung dari DEV Community dan GitHub, diperbarui otomatis.", size=13, color=ft.colors.ON_SURFACE_VARIANT),
-            community_feed(page),
-        ], spacing=10))
+        padding=ft.padding.symmetric(horizontal=32, vertical=20),
+        content=ft.Column(
+            [
+                section_heading("🔥 Sedang Ramai di Komunitas Developer"),
+                ft.Text(
+                    "Diambil langsung dari DEV Community dan GitHub, diperbarui otomatis.",
+                    size=13,
+                    color=ft.colors.ON_SURFACE_VARIANT,
+                ),
+                community_feed(page),
+            ],
+            spacing=12,
+        ),
+    )

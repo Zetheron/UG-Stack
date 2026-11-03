@@ -27,7 +27,7 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
         "",
         font_family="monospace",
         size=13,
-        color="#00FF66",
+        color="#00E676",
         selectable=True,
     )
 
@@ -44,7 +44,7 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
         value=initial_code if initial_code else SAMPLES.get(lang_key, SAMPLES["Python"]),
         multiline=True,
         min_lines=9,
-        max_lines=15,
+        max_lines=14,
         text_style=ft.TextStyle(font_family="monospace", size=13),
         border_radius=8,
         on_change=run_editor,
@@ -52,7 +52,8 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
     lang_dd = ft.Dropdown(
         label="Bahasa",
         value=lang_key,
-        width=180,
+        width=200,
+        border_radius=8,
         options=[ft.dropdown.Option(k, k) for k in SAMPLES.keys()],
     )
     output_text.value = simulator.run_code(lang_key, code_tf.value)
@@ -73,7 +74,7 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
     algo_dd = ft.Dropdown(
         label="Algoritma",
         value="binary_search",
-        width=220,
+        border_radius=8,
         options=[
             ft.dropdown.Option("binary_search", "Binary Search O(log n)"),
             ft.dropdown.Option("linear_search", "Linear Search O(n)"),
@@ -81,10 +82,10 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
             ft.dropdown.Option("insertion_sort", "Insertion Sort O(n^2)"),
         ],
     )
-    arr_tf = ft.TextField(label="Deretan angka (pisahkan koma)", value="42, 15, 8, 99, 23, 4, 16, 55", expand=True)
-    target_tf = ft.TextField(label="Target cari", value="23", width=130)
+    arr_tf = ft.TextField(label="Deretan angka (pisahkan koma)", value="42, 15, 8, 99, 23, 4, 16, 55", border_radius=8)
+    target_tf = ft.TextField(label="Target cari", value="23", border_radius=8)
     algo_summary = ft.Text("", weight=ft.FontWeight.BOLD, size=13, color=GREEN)
-    algo_steps_col = ft.Column(spacing=6)
+    algo_steps_col = ft.Column(spacing=8)
 
     def run_algo(e=None):
         steps, summary = simulator.simulate_algorithm(
@@ -114,30 +115,60 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
     target_tf.on_change = run_algo
     run_algo()
 
-    editor_card = card(ft.Column([
-        section_heading("Contoh Kode:"),
-        ft.Row([lang_dd, green_button("Run ❯", run_editor)], spacing=12, wrap=True),
-        code_tf,
-        ft.Text("Hasil Eksekusi Output:", weight=ft.FontWeight.BOLD, size=14),
-        ft.Container(
-            bgcolor="#1E1F26",
-            padding=15,
-            border_radius=8,
-            content=ft.Column([output_text], spacing=0),
+    editor_card = card(
+        ft.Column(
+            [
+                ft.Row(
+                    [
+                        section_heading("Contoh Kode:"),
+                        ft.Row([lang_dd, green_button("Run ❯", run_editor)], spacing=10, wrap=True),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    wrap=True,
+                ),
+                code_tf,
+                ft.Text("Hasil Eksekusi Output:", weight=ft.FontWeight.BOLD, size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.Container(
+                    bgcolor="#1E222A",
+                    padding=16,
+                    border_radius=8,
+                    content=ft.Column([output_text], spacing=0),
+                ),
+            ],
+            spacing=12,
         ),
-    ], spacing=10))
+        col={"xs": 12, "lg": 6},
+    )
 
-    algo_card = card(ft.Column([
-        section_heading("Simulasi"),
-        ft.ResponsiveRow([
-            ft.Column([algo_dd], col={"xs": 12, "md": 3}),
-            ft.Column([arr_tf], col={"xs": 12, "md": 5}),
-            ft.Column([target_tf], col={"xs": 6, "md": 2}),
-            ft.Column([green_button("Run ❯", run_algo)], col={"xs": 6, "md": 2}),
-        ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-        algo_summary,
-        algo_steps_col,
-    ], spacing=10))
+    algo_card = card(
+        ft.Column(
+            [
+                ft.Row(
+                    [
+                        section_heading("Simulasi"),
+                        green_button("Run ❯", run_algo),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.ResponsiveRow(
+                    [
+                        ft.Column([algo_dd], col={"xs": 12, "sm": 5}),
+                        ft.Column([arr_tf], col={"xs": 12, "sm": 5}),
+                        ft.Column([target_tf], col={"xs": 12, "sm": 2}),
+                    ],
+                    spacing=10,
+                    run_spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                algo_summary,
+                algo_steps_col,
+            ],
+            spacing=12,
+        ),
+        col={"xs": 12, "lg": 6},
+    )
 
     return [editor_card, algo_card]
 
@@ -185,19 +216,30 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
 
     sim_cards = create_simulator_cards(lang_name=lang_name, initial_code=initial_code)
 
-    return ft.Column([
-        page_banner("UG-Stack Spaces", "Ruang eksperimen kode", mobile),
-        ft.Container(
-            padding=pad(mobile),
-            content=ft.Column([
-                ft.Row([
-                    ft.TextButton("❮ Kembali", on_click=handle_back),
-                    chip("Try Spaces", "#D9EEE1"),
-                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
-                *sim_cards,
-            ], spacing=18),
-        ),
-    ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+    return ft.Column(
+        [
+            page_banner("UG-Stack Spaces", "Ruang eksperimen kode", mobile),
+            ft.Container(
+                padding=pad(mobile),
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.TextButton("❮ Kembali", on_click=handle_back),
+                                chip("Try Spaces", "#D9EEE1"),
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            wrap=True,
+                        ),
+                        ft.ResponsiveRow(sim_cards, spacing=16, run_spacing=16),
+                    ],
+                    spacing=16,
+                ),
+            ),
+        ],
+        spacing=0,
+        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+    )
 
 
 create_tryit_view = get_tryit_view

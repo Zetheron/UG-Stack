@@ -18,14 +18,14 @@ def create_header(page: ft.Page, user=None, mobile=False, active_nav=None, activ
         return fn(*args) if fn else None
 
     logo = ft.Container(
-        content=ft.IconButton(icon=ft.icons.CODE, icon_color="#04AA6D", icon_size=26,
+        content=ft.IconButton(icon=ft.icons.CODE, icon_color="#04AA6D", icon_size=24,
                               on_click=lambda e: call(on_home_click), tooltip="UG-Stack Home"),
-        padding=ft.padding.only(left=5))
-    search_btn = ft.IconButton(ft.icons.SEARCH, icon_color=ft.colors.WHITE, tooltip="Cari",
+        padding=ft.padding.only(left=8))
+    search_btn = ft.IconButton(ft.icons.SEARCH, icon_color=ft.colors.WHITE, icon_size=20, tooltip="Cari",
                                on_click=lambda e: call(on_search_click))
-    theme_btn = ft.IconButton(ft.icons.LIGHT_MODE if dark else ft.icons.DARK_MODE, icon_color=ft.colors.WHITE,
+    theme_btn = ft.IconButton(ft.icons.LIGHT_MODE if dark else ft.icons.DARK_MODE, icon_color=ft.colors.WHITE, icon_size=20,
                               tooltip="Tema terang" if dark else "Tema gelap", on_click=lambda e: call(on_theme_toggle))
-    lang_btn = ft.TextButton(content=ft.Text("EN" if ui_lang == "id" else "ID", color=ft.colors.WHITE, weight=ft.FontWeight.BOLD),
+    lang_btn = ft.TextButton(content=ft.Text("EN" if ui_lang == "id" else "ID", color=ft.colors.WHITE, size=12, weight=ft.FontWeight.BOLD),
                              tooltip="Switch to English" if ui_lang == "id" else "Ganti ke Bahasa Indonesia",
                              on_click=lambda e: call(on_lang_toggle))
 
@@ -36,41 +36,65 @@ def create_header(page: ft.Page, user=None, mobile=False, active_nav=None, activ
             items.append(ft.PopupMenuItem(text="Logout", icon=ft.icons.LOGOUT, on_click=lambda e: call(on_logout_click)))
         else:
             items.append(ft.PopupMenuItem(text="Login / Daftar", icon=ft.icons.LOGIN, on_click=lambda e: call(on_login_click)))
-        title = ft.Text("UG-Stack", color=ft.colors.WHITE, weight=ft.FontWeight.BOLD, size=18)
+        title = ft.Text("UG-Stack", color=ft.colors.WHITE, weight=ft.FontWeight.BOLD, size=17)
         actions = [lang_btn, theme_btn, search_btn, ft.PopupMenuButton(icon=ft.icons.MENU, icon_color=ft.colors.WHITE, items=items)]
     else:
         def nav_button(label, key):
             if key == "paid_courses":
-                return ft.ElevatedButton(label, bgcolor="#9B51E0", color=ft.colors.WHITE,
-                                         style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=10, vertical=5)),
-                                         on_click=lambda e, k=key: call(on_nav_click, k))
+                return ft.ElevatedButton(
+                    label,
+                    bgcolor="#04AA6D" if key == active_nav else "#38444D",
+                    color=ft.colors.WHITE,
+                    style=ft.ButtonStyle(
+                        shape=ft.RoundedRectangleBorder(radius=8),
+                        padding=ft.padding.symmetric(horizontal=12, vertical=6),
+                        elevation=0,
+                    ),
+                    on_click=lambda e, k=key: call(on_nav_click, k),
+                )
             active = key == active_nav
             return ft.TextButton(
                 content=ft.Text(label, color="#04AA6D" if active else ft.colors.WHITE, size=13,
-                                weight=ft.FontWeight.BOLD if active else ft.FontWeight.NORMAL),
+                                weight=ft.FontWeight.BOLD if active else ft.FontWeight.W_500),
+                style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=10, vertical=6)),
                 on_click=lambda e, k=key: call(on_nav_click, k))
 
-        title = ft.Row([nav_button(l, k) for l, k in NAV_ITEMS], spacing=4, scroll=ft.ScrollMode.AUTO)
+        title = ft.Row([nav_button(l, k) for l, k in NAV_ITEMS], spacing=2, scroll=ft.ScrollMode.AUTO,
+                       vertical_alignment=ft.CrossAxisAlignment.CENTER)
         if user:
             actions = [lang_btn, theme_btn, search_btn,
                        ft.TextButton(content=ft.Text(f"👤 {user['username']}", color=ft.colors.WHITE, size=13),
                                      on_click=lambda e: call(on_dashboard_click)),
-                       ft.IconButton(ft.icons.LOGOUT, icon_color=ft.colors.WHITE, tooltip="Logout",
-                                     on_click=lambda e: call(on_logout_click))]
+                       ft.IconButton(ft.icons.LOGOUT, icon_color=ft.colors.WHITE, icon_size=20, tooltip="Logout",
+                                     on_click=lambda e: call(on_logout_click)),
+                       ft.Container(width=8)]
         else:
             actions = [lang_btn, theme_btn, search_btn,
-                       ft.ElevatedButton("Login", bgcolor="#04AA6D", color=ft.colors.WHITE, on_click=lambda e: call(on_login_click)),
-                       ft.Container(width=8)]
+                       ft.ElevatedButton(
+                           "Login",
+                           bgcolor="#04AA6D",
+                           color=ft.colors.WHITE,
+                           style=ft.ButtonStyle(
+                               shape=ft.RoundedRectangleBorder(radius=8),
+                               padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                               elevation=0,
+                           ),
+                           on_click=lambda e: call(on_login_click),
+                       ),
+                       ft.Container(width=12)]
 
     sub_buttons = [
         ft.TextButton(
-            content=ft.Text(l["name"].upper(), color="#04AA6D" if l["key"] == active_lang else ft.colors.WHITE,
-                            size=12, weight=ft.FontWeight.BOLD),
+            content=ft.Text(l["name"].upper(), color="#04AA6D" if l["key"] == active_lang else "#D8DEE9",
+                            size=11, weight=ft.FontWeight.BOLD if l["key"] == active_lang else ft.FontWeight.W_500),
             on_click=lambda e, k=l["key"]: call(on_lang_click, k),
-            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=8)))
+            style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=10, vertical=4)))
         for l in LANGS]
-    sub_nav = ft.Container(bgcolor="#1D2A35", padding=ft.padding.symmetric(horizontal=10, vertical=3),
-                           content=ft.Row(sub_buttons, scroll=ft.ScrollMode.AUTO, spacing=2))
+    sub_nav = ft.Container(
+        bgcolor="#1D2A35",
+        padding=ft.padding.symmetric(horizontal=16, vertical=4),
+        content=ft.Row(sub_buttons, scroll=ft.ScrollMode.AUTO, spacing=4, alignment=ft.MainAxisAlignment.CENTER),
+    )
 
-    appbar = ft.AppBar(leading=logo, title=title, center_title=False, bgcolor="#282A35", actions=actions)
+    appbar = ft.AppBar(leading=logo, title=title, center_title=False, bgcolor="#282A35", elevation=0, actions=actions)
     return appbar, sub_nav
