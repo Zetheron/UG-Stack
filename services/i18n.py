@@ -17,6 +17,11 @@ _pat_id: list = []      # [(regex, template_id)]
 _memo: dict = {}
 _MEMO_MAX = 6000
 
+_NUM_PREFIX_RE = re.compile(r"^(\d+\.\s+)(.+)$", re.DOTALL)
+_BRACKET_PREFIX_RE = re.compile(r"^(\[[A-Za-z0-9#+_]+\]\s+)(.+)$", re.DOTALL)
+_DASH_SEP_RE = re.compile(r"^([A-Za-z0-9#+.\s]+?)\s-\s(.+)$", re.DOTALL)
+_ARROW_SUFFIX_RE = re.compile(r"^(.+?)(\s+❯)$", re.DOTALL)
+
 
 def _compile(template: str):
     parts = template.split("{}")
@@ -123,6 +128,31 @@ def translate(text, lang: str):
                 groups = [table.get(g, g) for g in m.groups()]           # bagian dinamis yang dikenal ikut diterjemahkan
                 result = _fill(template, groups)
                 break
+    if result is None:
+        m = _NUM_PREFIX_RE.match(text)
+        if m:
+            tr_body = translate(m.group(2), lang)
+            if tr_body != m.group(2):
+                result = m.group(1) + tr_body
+    if result is None:
+        m = _BRACKET_PREFIX_RE.match(text)
+        if m:
+            tr_body = translate(m.group(2), lang)
+            if tr_body != m.group(2):
+                result = m.group(1) + tr_body
+    if result is None:
+        m = _ARROW_SUFFIX_RE.match(text)
+        if m:
+            tr_body = translate(m.group(1), lang)
+            if tr_body != m.group(1):
+                result = tr_body + m.group(2)
+    if result is None:
+        m = _DASH_SEP_RE.match(text)
+        if m:
+            left_tr = translate(m.group(1), lang)
+            right_tr = translate(m.group(2), lang)
+            if left_tr != m.group(1) or right_tr != m.group(2):
+                result = f"{left_tr} - {right_tr}"
     if result is None:
         result = text
     if len(_memo) > _MEMO_MAX:

@@ -30,7 +30,7 @@ def snippet_of_the_day(page, on_open_lesson, on_tryit):
                     code_block(page, lesson["code"], f"{lang['name']} - {lesson['title']}"),
                     ft.Row(
                         [
-                            green_button("Try it Yourself ❯", lambda e: on_tryit(lang["name"], lesson["code"])),
+                            green_button("Coba Sendiri ❯", lambda e: on_tryit(lang["name"], lesson["code"])),
                             ft.TextButton("Pelajari pelajarannya ❯", on_click=lambda e: on_open_lesson(key, idx)),
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,

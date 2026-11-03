@@ -1,8 +1,8 @@
 import flet as ft
 
+from components.code_editor import get_samples
 from components.ui import GREEN, card, chip, dark_button, green_button, page_banner, pad
 from content.languages import LANGS
-from content.lessons import LESSONS
 from content.quizzes import PASS_PERCENT
 from services import quiz as quiz_service
 from services import quiz_admin
@@ -10,6 +10,8 @@ from views.tryit import create_simulator_cards
 
 
 def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit=None):
+    ui_lang = getattr(page, "_ug_lang", "id")
+    samples = get_samples(ui_lang)
     results = quiz_service.get_results(user["username"]) if user else {}
     cards = []
     for l in LANGS:
@@ -20,11 +22,11 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
             status = chip(f"Terbaik {rec['best']}% (belum lulus)", "#FFE0B2")
         else:
             status = chip("Belum dicoba", "#EEEEEE")
-        sample_code = LESSONS[l["key"]][0]["code"]
+        sample_code = samples.get(l["name"], samples["Python"])
         action_buttons = [green_button("Mulai quiz ❯", lambda e, k=l["key"]: on_open_quiz(k))]
         if on_tryit:
             action_buttons.append(
-                dark_button("Try it Yourself ❯", lambda e, n=l["name"], c=sample_code: on_tryit(n, c))
+                dark_button("Coba Sendiri ❯", lambda e, n=l["name"], c=sample_code: on_tryit(n, c))
             )
         cards.append(
             card(
@@ -63,7 +65,7 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
         if not user
         else f"Skor Anda tersimpan otomatis, {user['username']}."
     )
-    sim_cards = create_simulator_cards("Python")
+    sim_cards = create_simulator_cards("Python", ui_lang=ui_lang)
     return ft.Column(
         [
             page_banner("Latihan dan Quiz", "Uji pemahaman Anda setelah mempelajari tiap bahasa.", mobile),
@@ -87,6 +89,8 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
 
 def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_login, on_certificate, on_retry, on_lesson, on_tryit=None):
     key = lang["key"]
+    ui_lang = getattr(page, "_ug_lang", "id")
+    samples = get_samples(ui_lang)
     questions = quiz_admin.get_questions(key)
     groups, feedback = [], []
     q_controls = []
@@ -151,7 +155,7 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
                 buttons.insert(0, green_button("Lihat sertifikat ❯", lambda e: on_certificate(key)))
         else:
             controls.append(ft.Text("Login untuk menyimpan skor dan mendapatkan sertifikat.", size=13, color=ft.colors.ON_SURFACE_VARIANT))
-            buttons.insert(0, green_button("Login", lambda e: on_login()))
+            buttons.insert(0, green_button("Masuk", lambda e: on_login()))
         controls.append(ft.Row(buttons, wrap=True, spacing=8))
         result_box.controls = controls
         page.update()
@@ -159,7 +163,7 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
     top_actions = [ft.TextButton("❮ Semua quiz", on_click=lambda e: on_back())]
     if on_tryit:
         top_actions.append(
-            green_button("Try it Yourself ❯", lambda e: on_tryit(lang["name"], LESSONS[key][0]["code"]))
+            green_button("Coba Sendiri ❯", lambda e: on_tryit(lang["name"], samples.get(lang["name"], samples["Python"])))
         )
 
     return ft.Column(

@@ -15,13 +15,11 @@ from views.account import open_change_password
 from views.admin import get_admin_view
 from views.auth_view import get_auth_view
 from views.certificates import get_certificate_detail_view, get_certificates_view
-from views.courses import get_paid_courses_view
 from views.dashboard import get_dashboard_view
 from views.exercises import get_exercises_view, get_quiz_view
 from views.home import get_home_view
 from views.info import get_info_view
 from views.lesson import get_lesson_view
-from views.plans import get_plans_view
 from views.references import get_references_view
 from views.roadmap import get_roadmap_view
 from views.search import get_search_view
@@ -34,13 +32,21 @@ PROTECTED_VIEWS = {"dashboard", "certificate", "admin"}  # halaman yang wajib lo
 ADMIN_VIEWS = {"admin"}                       # halaman khusus admin
 SESSION_TIMEOUT = 15 * 60                     # detik tanpa aktivitas sebelum logout otomatis
 FULLSCREEN_VIEWS = {"tryit"}                  # halaman tanpa appbar/footer
-NAV_OF = {"tutorials": "tutorials", "lesson": "tutorials", "references": "references", "exercises": "exercises",
-          "quiz": "exercises", "chat": "chat", "certificates": "certificates", "certificate": "certificates",
-          "roadmap": "roadmap", "plans": "upgrade", "courses": "paid_courses"}
+NAV_OF = {
+    "tutorials": "tutorials",
+    "lesson": "tutorials",
+    "references": "references",
+    "exercises": "exercises",
+    "quiz": "exercises",
+    "chat": "chat",
+    "certificates": "certificates",
+    "certificate": "certificates",
+    "roadmap": "roadmap",
+}
 
 
 def main(page: ft.Page):
-    page.title = "UG-Stack - Learn to Code"
+    page.title = "UG-Stack - Belajar Coding"
     page.theme = ft.Theme(color_scheme_seed="#04AA6D")
     page.dark_theme = ft.Theme(color_scheme_seed="#04AA6D")
     page.padding = 0
@@ -110,7 +116,7 @@ def main(page: ft.Page):
                     import json as _json
                     saved_view = _json.loads(load_pref("view", "") or "{}")
                     if saved_view.get("view") in ("dashboard", "lesson", "references", "exercises", "chat", "certificates",
-                                                  "tutorials", "roadmap", "plans", "courses", "search", "admin", "tryit"):
+                                                  "tutorials", "roadmap", "search", "admin", "tryit"):
                         state["view"], state["args"] = saved_view["view"], saved_view.get("args") or {}
                 except (ValueError, TypeError, AttributeError):
                     pass
@@ -226,10 +232,14 @@ def main(page: ft.Page):
         open_dashboard() if state["user"] else open_auth("register")
 
     def handle_header_nav(key):
-        routes = {"tutorials": lambda: go("tutorials"), "references": lambda: go("references", lang="python"),
-                  "exercises": lambda: go("exercises"), "chat": lambda: go("chat"),
-                  "certificates": lambda: go("certificates"), "roadmap": lambda: go("roadmap"),
-                  "upgrade": lambda: go("plans"), "paid_courses": lambda: go("courses")}
+        routes = {
+            "tutorials": lambda: go("tutorials"),
+            "references": lambda: go("references", lang="python"),
+            "exercises": lambda: go("exercises"),
+            "chat": lambda: go("chat"),
+            "certificates": lambda: go("certificates"),
+            "roadmap": lambda: go("roadmap"),
+        }
         routes.get(key, open_home)()
 
     def handle_footer(text):
@@ -300,11 +310,6 @@ def main(page: ft.Page):
             return create_chat_view(page, go=go, mobile=mobile, user=user)
         if view == "info":
             return get_info_view(page, args.get("key", "tentang"), mobile, open_home)
-        if view == "plans":
-            return get_plans_view(page, user, mobile, on_login=lambda: open_auth("login"), on_changed=lambda: go("plans"))
-        if view == "courses":
-            return get_paid_courses_view(page, user, mobile, on_login=lambda: open_auth("login"),
-                                         on_changed=lambda: go("courses"), on_open_lang=open_lang)
         if view == "tryit":
             return get_tryit_view(page, default_lang=args.get("lang", "HTML"), on_back=go_back, code=args.get("code"), mobile=mobile)
         return get_home_view(

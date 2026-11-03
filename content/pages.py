@@ -1,13 +1,13 @@
 """Konten halaman statis: roadmap belajar dan halaman informasi."""
 
 ROADMAP = [
-    dict(title="Front-End Developer", icon="🎨", desc="Membangun tampilan web yang interaktif dan responsif.",
+    dict(title="Pengembang Front-End", icon="🎨", desc="Membangun tampilan web yang interaktif dan responsif.",
          steps=[("html", "Mulai dari struktur halaman."), ("css", "Percantik dan buat responsif."),
                 ("javascript", "Tambahkan interaksi."), ("react", "Bangun UI berbasis komponen.")]),
-    dict(title="Back-End Developer", icon="🛠️", desc="Membuat logika server dan menyimpan data.",
+    dict(title="Pengembang Back-End", icon="🛠️", desc="Membuat logika server dan menyimpan data.",
          steps=[("python", "Kuasai dasar pemrograman."), ("sql", "Kelola data dengan query."),
                 ("php", "Bangun situs dinamis sisi server."), ("mysql", "Rancang basis data yang efisien.")]),
-    dict(title="Software Engineer", icon="⚙️", desc="Memahami fondasi komputer dan aplikasi skala besar.",
+    dict(title="Rekayasa Perangkat Lunak", icon="⚙️", desc="Memahami fondasi komputer dan aplikasi skala besar.",
          steps=[("c", "Pahami memori dan pointer."), ("cpp", "Tambah OOP dan STL."),
                 ("java", "Bangun aplikasi berorientasi objek."), ("csharp", "Jelajahi .NET dan game Unity.")]),
     dict(title="Data dan Otomasi", icon="📊", desc="Mengolah data dan mengotomasi pekerjaan.",
@@ -30,7 +30,7 @@ INFO = {
         ("Android (APK)", "Pasang Flutter SDK, JDK 17, dan Android SDK, lalu jalankan flet build apk di folder proyek. Salin berkas .apk dari folder build/apk ke HP dan pasang. Rincian ada di README."),
         ("Data di aplikasi", "Pada APK, data pengguna dan cache konten disimpan di folder khusus aplikasi sehingga tetap ada setelah aplikasi ditutup."),
     ]),
-    "spaces": dict(title="UG-Stack Spaces", sections=[
+    "spaces": dict(title="Ruang Kode UG-Stack", sections=[
         ("Ruang eksperimen kode", "Gunakan Try it Editor untuk mencoba contoh kode dari setiap pelajaran. Buka pelajaran, lalu tekan tombol Try it Yourself untuk memuat kode ke editor."),
         ("Segera hadir", "Penyimpanan proyek pribadi dan berbagi tautan hasil kode."),
     ]),

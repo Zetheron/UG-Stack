@@ -14,12 +14,12 @@ def get_lesson_view(page: ft.Page, lang: dict, idx: int, mobile: bool, on_lesson
     last = idx == len(lessons) - 1
 
     hero = ft.Container(
-        bgcolor=DARK, padding=ft.padding.symmetric(vertical=22, horizontal=pad(mobile)),
+        bgcolor=DARK, padding=ft.padding.symmetric(vertical=24, horizontal=pad(mobile)),
         content=ft.Row([
             ft.Container(ft.Text(lang["icon"], size=34), bgcolor=lang["color"], width=62, height=62, border_radius=12,
                          alignment=ft.alignment.center),
             ft.Column([
-                ft.Text(f"{lang['name']} Tutorial", size=26 if not mobile else 22, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
+                ft.Text(f"Tutorial {lang['name']}", size=26 if not mobile else 22, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
                 ft.Text(lang["tagline"], size=13, color="#C8CCD4"),
                 ft.Row([chip(lang["level"]), chip(f"{len(lessons)} pelajaran", "#E7F9F0")], spacing=6, wrap=True),
             ], spacing=4, expand=True),
@@ -33,18 +33,18 @@ def get_lesson_view(page: ft.Page, lang: dict, idx: int, mobile: bool, on_lesson
             on_change=lambda e: on_lesson(key, int(e.control.value)))
         sidebar = ft.Container(col={"xs": 12, "md": 3}, content=side)
     else:
-        rows = [ft.Text(f"{lang['name']} Tutorial", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE)]
+        rows = [ft.Text(f"Tutorial {lang['name']}", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE)]
         for i, l in enumerate(lessons):
             active = i == idx
             rows.append(ft.Container(
-                ft.Text(f"{i + 1}. {l['title']}", size=13, color=ft.colors.WHITE if active else ft.colors.BLACK,
+                ft.Text(f"{i + 1}. {l['title']}", size=13, color=ft.colors.WHITE if active else ft.colors.ON_SURFACE,
                         weight=ft.FontWeight.BOLD if active else ft.FontWeight.NORMAL),
                 bgcolor=GREEN if active else None, padding=ft.padding.symmetric(horizontal=10, vertical=8),
-                border_radius=6, ink=True, on_click=lambda e, i=i: on_lesson(key, i)))
-        rows += [ft.Divider(height=10),
-                 ft.TextButton("📋 Cheat sheet", on_click=lambda e: on_reference(key)),
+                border_radius=8, ink=True, on_click=lambda e, i=i: on_lesson(key, i)))
+        rows += [ft.Divider(height=10, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
+                 ft.TextButton("📋 Ringkasan sintaks", on_click=lambda e: on_reference(key)),
                  ft.TextButton("📝 Quiz & sertifikat", on_click=lambda e: on_quiz(key))]
-        sidebar = ft.Container(col={"xs": 12, "md": 3}, bgcolor=SIDEBAR, padding=14, border_radius=10,
+        sidebar = ft.Container(col={"xs": 12, "md": 3}, bgcolor=SIDEBAR, padding=16, border_radius=12,
                                content=ft.Column(rows, spacing=4))
 
     nav_row = ft.Row([
@@ -59,8 +59,8 @@ def get_lesson_view(page: ft.Page, lang: dict, idx: int, mobile: bool, on_lesson
         ft.Text(lesson["title"], size=28 if not mobile else 24, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
         *paragraphs,
         code_block(page, lesson["code"], f"Contoh {lang['name']}"),
-        ft.Row([green_button("Try it Yourself ❯", lambda e: on_tryit(lang["name"], lesson["code"]))]),
-        ft.Divider(height=20),
+        ft.Row([green_button("Coba Sendiri ❯", lambda e: on_tryit(lang["name"], lesson["code"]))]),
+        ft.Divider(height=20, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
         nav_row,
     ], spacing=12))
 
@@ -72,7 +72,7 @@ def get_lesson_view(page: ft.Page, lang: dict, idx: int, mobile: bool, on_lesson
         ft.Container(padding=pad(mobile), content=ft.Column([
             ft.ResponsiveRow([sidebar, main], spacing=20, run_spacing=14),
             docs,
-            ft.Divider(height=30),
+            ft.Divider(height=30, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
             section_heading("Diperkaya otomatis dari sumber tepercaya"),
             ft.Text("Bagian ini dimuat langsung dari Wikipedia, MDN, Stack Overflow, DEV Community, dan GitHub.",
                     size=13, color=ft.colors.ON_SURFACE_VARIANT),

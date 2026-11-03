@@ -45,7 +45,7 @@ def get_certificates_view(page: ft.Page, user, mobile: bool, on_login, on_quiz, 
                             size=14,
                             color=ft.colors.ON_SURFACE_VARIANT,
                         ),
-                        green_button("Login / Daftar", lambda e: on_login()),
+                        green_button("Masuk / Daftar", lambda e: on_login()),
                     ],
                     spacing=10,
                 )
@@ -68,7 +68,7 @@ def get_certificates_view(page: ft.Page, user, mobile: bool, on_login, on_quiz, 
                                     ft.Row(
                                         [
                                             ft.Text("🏅" if earned else "🔒", size=22),
-                                            ft.Text(f"{l['name']} Certificate", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+                                            ft.Text(f"Sertifikat {l['name']}", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
                                         ],
                                         spacing=8,
                                     ),
@@ -129,7 +129,7 @@ def get_certificate_detail_view(page: ft.Page, user, lang_key: str, mobile: bool
             [
                 ft.Text("🏅", size=44),
                 ft.Text("SERTIFIKAT KELULUSAN", size=24 if not mobile else 20, weight=ft.FontWeight.BOLD, color=DARK, text_align=ft.TextAlign.CENTER),
-                ft.Text("UG-Stack Learning Platform", size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.Text("Platform Belajar UG-Stack", size=13, color=ft.colors.ON_SURFACE_VARIANT),
                 ft.Divider(height=20, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
                 ft.Text("Diberikan kepada", size=14, color=ft.colors.ON_SURFACE_VARIANT),
                 ft.Text(cert["username"], size=32 if not mobile else 26, weight=ft.FontWeight.BOLD, color=GREEN, text_align=ft.TextAlign.CENTER),

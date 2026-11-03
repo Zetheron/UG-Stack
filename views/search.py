@@ -35,22 +35,22 @@ def get_search_view(page: ft.Page, query: str, mobile: bool, on_search, on_open_
                     ft.Text(r["snippet"], size=12, color=ft.colors.ON_SURFACE_VARIANT)], spacing=4),
                     on_click=lambda e, r=r: on_open_lesson(r["lang"], r["index"])))
         if res["reference"]:
-            controls.append(section_heading("Cheat sheet"))
+            controls.append(section_heading("Ringkasan sintaks"))
             for r in res["reference"][:8]:
                 controls.append(card(ft.Row([chip(BY_KEY[r["lang"]]["name"]),
                                              ft.Text(r["syntax"], font_family="monospace", size=12, color="#B31D4D"),
                                              ft.Text(r["desc"], size=12, color=ft.colors.ON_SURFACE_VARIANT)], wrap=True, spacing=8),
-                                     padding=10, on_click=lambda e, r=r: on_open_ref(r["lang"])))
+                                     padding=12, on_click=lambda e, r=r: on_open_ref(r["lang"])))
         if total == 0:
             controls.append(ft.Text("Tidak ada hasil di materi bawaan. Lihat hasil dari web di bawah.", size=13, color=ft.colors.ON_SURFACE_VARIANT))
-        controls.append(ft.Divider(height=20))
+        controls.append(ft.Divider(height=20, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)))
         controls.append(section_heading("Dari web (sumber tepercaya)"))
         controls.append(ft.ResponsiveRow([
             source_panel(page, "Wikipedia", "📖", "Wikipedia", "https://www.wikipedia.org",
                          lambda: ws.wikipedia_search(q, 4), r_doc, "Tidak ada artikel."),
             source_panel(page, "Stack Overflow", "💬", "Stack Overflow", "https://stackoverflow.com",
                          lambda: ws.stackoverflow_search(q, None, 6), r_so, "Tidak ada pertanyaan."),
-        ], spacing=14, run_spacing=14))
+        ], spacing=16, run_spacing=16))
 
     return ft.Column([
         page_banner("Pencarian", "Cari di materi UG-Stack dan sumber tepercaya di web.", mobile),

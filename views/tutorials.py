@@ -22,7 +22,7 @@ def get_tutorials_view(page: ft.Page, mobile: bool, on_open_lang, on_roadmap):
                             content=ft.Row(
                                 [
                                     ft.Text(l["icon"], size=24),
-                                    ft.Text(f"{l['name']} Tutorial", size=18, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
+                                    ft.Text(f"Tutorial {l['name']}", size=18, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
                                 ],
                                 spacing=10,
                             ),
@@ -64,7 +64,7 @@ def get_tutorials_view(page: ft.Page, mobile: bool, on_open_lang, on_roadmap):
                         ft.Row(
                             [
                                 ft.Text("Bingung mulai dari mana?", size=14, color=ft.colors.ON_SURFACE_VARIANT),
-                                ft.TextButton("Lihat Roadmap ❯", on_click=lambda e: on_roadmap()),
+                                ft.TextButton("Lihat Alur Belajar ❯", on_click=lambda e: on_roadmap()),
                             ],
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,

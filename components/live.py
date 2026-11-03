@@ -4,6 +4,7 @@ import urllib.parse
 
 import flet as ft
 
+from components.i18n_ui import translate_tree
 from content.fallback import ABOUT, RESOURCES
 from services import web_sources as ws
 from services.i18n import translate
@@ -44,7 +45,7 @@ def loading_row() -> ft.Row:
 def source_panel(page, title, emoji, source_label, source_url, loader, render_item,
                  empty_text="Tidak ada data.", col=None, fallback=None):
     ui_lang = getattr(page, "_ug_lang", "id")
-    cache_key = f"{title}|{source_label}"
+    cache_key = f"{title}|{source_label}|{ui_lang}"
 
     # Jika sudah ada di memori RAM, langsung tampilkan tanpa spinner dan tanpa thread baru!
     if cache_key in _PANEL_MEM:
@@ -52,6 +53,7 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
         items = cached_data if isinstance(cached_data, list) else [cached_data]
         controls = [render_item(i) for i in items] or [ft.Text(translate(empty_text, ui_lang), size=12, color=ft.colors.ON_SURFACE_VARIANT)]
         body = ft.Column(controls, spacing=10)
+        translate_tree(body, ui_lang)
         note = ft.Text(translate(STATUS_TEXT.get(cached_status, ""), ui_lang), size=11, color=ft.colors.ON_SURFACE_VARIANT)
         return ft.Container(
             col=col or {"xs": 12, "md": 6}, bgcolor=ft.colors.SURFACE, padding=20, border_radius=12,
@@ -83,6 +85,7 @@ def source_panel(page, title, emoji, source_label, source_url, loader, render_it
             _PANEL_MEM[cache_key] = (data, status)
             items = data if isinstance(data, list) else [data]
             body.controls = [render_item(i) for i in items] or [ft.Text(translate(empty_text, ui_lang), size=12, color=ft.colors.ON_SURFACE_VARIANT)]
+            translate_tree(body, ui_lang)
             note.value = translate(STATUS_TEXT.get(status, ""), ui_lang)
         try:
             if getattr(body, "page", None):
@@ -145,11 +148,17 @@ def language_live_section(page, lang: dict) -> ft.ResponsiveRow:
     ui_lang = getattr(page, "_ug_lang", "id")
     pick = 0 if ui_lang == "id" else 1
     about = ABOUT[lang["key"]][pick]
-    wiki_url = "https://en.wikipedia.org/wiki/" + urllib.parse.quote(lang["wiki"].replace(" ", "_"), safe="_()")
+    wiki_host = "id.wikipedia.org" if ui_lang == "id" else "en.wikipedia.org"
+    wiki_url = f"https://{wiki_host}/wiki/" + urllib.parse.quote(lang["wiki"].replace(" ", "_"), safe="_()")
     resources = [{"title": t, "url": u, "desc": (d_id, d_en)[pick]} for t, u, d_id, d_en in RESOURCES[lang["key"]]]
+    wiki_loader = (
+        (lambda: ({"title": lang["name"], "extract": about, "url": wiki_url}, "live"))
+        if ui_lang == "id"
+        else (lambda: ws.wikipedia_summary(lang["wiki"]))
+    )
     panels = [
-        source_panel(page, f"Tentang {lang['name']}", "📖", "Wikipedia", "https://www.wikipedia.org",
-                     lambda: ws.wikipedia_summary(lang["wiki"]), r_wiki,
+        source_panel(page, f"Tentang {lang['name']}", "📖", "Wikipedia", f"https://{wiki_host}",
+                     wiki_loader, r_wiki,
                      fallback=lambda: {"title": lang["name"], "extract": about, "url": wiki_url}),
         static_panel("Sumber Belajar Pilihan", "📚", resources),
         source_panel(page, "Pertanyaan Terpopuler", "💬", "Stack Overflow", "https://stackoverflow.com",

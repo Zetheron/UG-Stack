@@ -37,8 +37,21 @@ def translate_tree(root, lang: str) -> None:
         if c is None or isinstance(c, (str, int, float, bool)) or id(c) in seen:
             continue
         seen.add(id(c))
-        for attr in _TEXT_ATTRS.get(type(c).__name__, ()):
-            _set(c, attr, lang)
+        cls_name = type(c).__name__
+        if cls_name == "Option":
+            try:
+                cur_text = getattr(c, "text", None)
+                cur_key = getattr(c, "key", None)
+                src = cur_text if isinstance(cur_text, str) and cur_text else (cur_key if isinstance(cur_key, str) else None)
+                if src:
+                    new_text = translate(src, lang)
+                    if cur_text is not None or new_text != src:
+                        c.text = new_text
+            except Exception:
+                pass
+        else:
+            for attr in _TEXT_ATTRS.get(cls_name, ()):
+                _set(c, attr, lang)
         _set(c, "tooltip", lang)
         for attr in _CHILD_LISTS:
             try:
@@ -58,6 +71,12 @@ def translate_tree(root, lang: str) -> None:
 
 def translate_page(page, lang: str) -> None:
     """Terjemahkan semua yang tampil: isi halaman, appbar, dialog, dan overlay (snackbar, dll.)."""
+    try:
+        t = getattr(page, "title", None)
+        if isinstance(t, str) and t:
+            page.title = translate(t, lang)
+    except Exception:
+        pass
     for root in list(getattr(page, "controls", None) or []):
         translate_tree(root, lang)
     for name in ("appbar", "dialog", "navigation_bar"):

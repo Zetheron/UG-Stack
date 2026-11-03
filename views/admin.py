@@ -2,11 +2,11 @@ import flet as ft
 
 from components.ui import GREEN, card, chip, dark_button, green_button, page_banner, pad, section_heading
 from content.languages import LANGS
-from services import audit, auth, backup, csv_io, enrollment, quiz_admin, reports, settings
+from services import audit, auth, backup, csv_io, quiz_admin, reports, settings
 from services.roles import ROLES, is_admin
 
 TABS = [("ringkasan", "🖥️ Ringkasan"), ("laporan", "📊 Mahasiswa"), ("pengguna", "👥 Pengguna"), ("akun", "➕ Buat Akun"),
-        ("soal", "📝 Soal Quiz"), ("log", "📜 Log Aktivitas"), ("data", "💾 Data (CSV/Backup)")]
+        ("soal", "📝 Soal Quiz"), ("log", "📜 Log Aktivitas"), ("data", "💾 Data (Cadangan/CSV)")]
 DOSEN_TABS = ("laporan", "soal")      # dosen: laporan mahasiswa dan soal quiz (modul dikelola dari Dashboard)
 
 
@@ -29,7 +29,7 @@ def get_admin_view(page: ft.Page, user: dict, tab: str, mobile: bool, on_tab, on
     return ft.Column([
         page_banner(title, sub, mobile),
         ft.Container(padding=pad(mobile), content=ft.Column([
-            ft.Row([dark_button("❮ Dashboard", lambda e: on_dashboard()), ], spacing=8),
+            ft.Row([dark_button("❮ Dasbor", lambda e: on_dashboard()), ], spacing=8),
             tab_row, body], spacing=14)),
     ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
@@ -54,11 +54,9 @@ def _tab_overview(page, user, mobile, refresh):
     cards = [stat("🎓 Mahasiswa", st["users"]["mahasiswa"]), stat("👨‍🏫 Dosen", st["users"]["dosen"]),
              stat("🛡️ Admin", st["users"]["admin"]), stat("📚 Modul", st["modules"]),
              stat("📝 Soal kustom", st["custom_questions"]), stat("🧪 Percobaan quiz", st["quiz_attempts"]),
-             stat("🏅 Sertifikat terbit", st["certificates"]), stat("🎟️ Pendaftaran kursus", st["course_enrollments"])]
-    plans = "  •  ".join(f"{name}: {st['plans'][key]}" for key, name in enrollment.PLANS.items())
+             stat("🏅 Sertifikat terbit", st["certificates"])]
     return ft.Column([
         section_heading("Ringkasan sistem"), ft.ResponsiveRow(cards, spacing=12, run_spacing=12),
-        card(ft.Column([ft.Text("Langganan paket", weight=ft.FontWeight.BOLD), ft.Text(plans, size=13, color=ft.colors.ON_SURFACE_VARIANT)], spacing=4)),
         card(ft.Column([ft.Text("Login admin", weight=ft.FontWeight.BOLD),
                         ft.Text("Admin hanya masuk dengan kode 16 karakter yang berganti setiap 60 detik (tools/admin_generator.html). "
                                 "Tidak ada tombol admin di halaman login.", size=13, color=ft.colors.ON_SURFACE_VARIANT)], spacing=4)),
@@ -75,13 +73,11 @@ def _tab_report(page, user, mobile, refresh):
         rows = reports.student_overview(user, st["kw"], st["sort"], st["desc"])
         cards = []
         for r in rows:
-            plan = r["plan"] or "-"
             cards.append(card(ft.Column([
                 ft.Row([ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD), chip(f"{r['percent']:.0f}%")], wrap=True, spacing=8),
                 ft.ProgressBar(value=r["percent"] / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
                 ft.Row([ft.Text(f"{r['done']}/{r['total']} modul", size=12), ft.Text(f"🏅 {r['passed']} sertifikat", size=12),
-                        ft.Text(f"Skor rata-rata {r['avg_best']:.0f}%", size=12), ft.Text(f"Paket: {plan}", size=12),
-                        ft.Text(f"{r['courses']} kursus", size=12)], wrap=True, spacing=14)], spacing=6), padding=12))
+                        ft.Text(f"Skor rata-rata {r['avg_best']:.0f}%", size=12)], wrap=True, spacing=14)], spacing=6), padding=12))
         list_box.controls = cards or [ft.Text("Belum ada mahasiswa yang cocok.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]
         count.value = f"{len(rows)} mahasiswa"
         if update:
@@ -140,7 +136,7 @@ def _tab_users(page, user, mobile, refresh):
                     err.value = msg
                     page.update()
             _dialog(page, f"Reset password {name}", ft.Column([tf, err], tight=True),
-                    [ft.TextButton("Batal", on_click=lambda e2: _close(page)), green_button("Reset", go)])
+                    [ft.TextButton("Batal", on_click=lambda e2: _close(page)), green_button("Atur ulang", go)])
 
         def change_role(e, name=name):
             ok, msg = auth.set_role(user, name, e.control.value)
@@ -163,8 +159,8 @@ def _tab_users(page, user, mobile, refresh):
                     *([chip("wajib ganti password", "#FFE0B2")] if u["must_change"] else []),
                     ft.Text(f"sejak {u['created_at']}", size=12, color=ft.colors.ON_SURFACE_VARIANT)], wrap=True, spacing=8),
             ft.Row([ft.Dropdown(label="Peran", value=u["role"], width=170, on_change=change_role,
-                                options=[ft.dropdown.Option(r) for r in ROLES]),
-                    ft.OutlinedButton("Reset password", on_click=reset),
+                                options=[ft.dropdown.Option(r, r) for r in ROLES]),
+                    ft.OutlinedButton("Atur ulang password", on_click=reset),
                     ft.OutlinedButton("Hapus", on_click=delete, disabled=is_self)],
                    wrap=True, spacing=8, run_spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER)], spacing=8)))
     return ft.Column([section_heading("Pengaturan"), card(reg_switch),
@@ -174,7 +170,7 @@ def _tab_users(page, user, mobile, refresh):
 # ------------------------------------------------------------------ buat akun (tunggal dan massal)
 def _tab_accounts(page, user, mobile, refresh):
     username = ft.TextField(label="Username (4-20 huruf/angka/_)", color=ft.colors.ON_SURFACE)
-    role = ft.Dropdown(label="Peran", value="mahasiswa", options=[ft.dropdown.Option(r) for r in ROLES])
+    role = ft.Dropdown(label="Peran", value="mahasiswa", options=[ft.dropdown.Option(r, r) for r in ROLES])
     password = ft.TextField(label="Password sementara (kosongkan = dibuat otomatis)", password=True,
                             can_reveal_password=True, color=ft.colors.ON_SURFACE)
     err = ft.Text("", color=ft.colors.RED_700, size=13)

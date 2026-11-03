@@ -1,10 +1,12 @@
 """Halaman Simulasi Real-Time: Live Code Sandbox & Visualizer Algoritma Step-by-Step."""
 import inspect
 import flet as ft
-from components.code_editor import SAMPLES
+from components.code_editor import SAMPLES, get_samples
+from components.i18n_ui import translate_tree
 from components.ui import GREEN, card, chip, green_button, pad, page_banner, section_heading
 from content.languages import find_lang
 from services import simulator
+from services.i18n import translate
 
 
 def _resolve_lang(lang_name: str) -> str:
@@ -21,8 +23,9 @@ def _resolve_lang(lang_name: str) -> str:
     return "Python"
 
 
-def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) -> list[ft.Control]:
+def create_simulator_cards(lang_name: str = "Python", initial_code: str = None, ui_lang: str = "id") -> list[ft.Control]:
     lang_key = _resolve_lang(lang_name)
+    samples = get_samples(ui_lang)
     output_text = ft.Text(
         "",
         font_family="monospace",
@@ -31,9 +34,19 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
         selectable=True,
     )
 
+    def _cur_lang(ctrl) -> str:
+        p = getattr(ctrl, "page", None)
+        return getattr(p, "_ug_lang", ui_lang) if p else ui_lang
+
+    def _tr_output(raw: str, lang: str) -> str:
+        lines = (raw or "").splitlines()
+        return "\n".join(translate(line, lang) for line in lines) if lines else translate(raw or "", lang)
+
     def run_editor(e=None):
         chosen = lang_dd.value or "Python"
-        output_text.value = simulator.run_code(chosen, code_tf.value or "")
+        cur_l = _cur_lang(output_text)
+        raw = simulator.run_code(chosen, code_tf.value or "")
+        output_text.value = _tr_output(raw, cur_l)
         try:
             if getattr(output_text, "page", None):
                 output_text.update()
@@ -41,7 +54,7 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
             pass
 
     code_tf = ft.TextField(
-        value=initial_code if initial_code else SAMPLES.get(lang_key, SAMPLES["Python"]),
+        value=initial_code if initial_code else samples.get(lang_key, samples["Python"]),
         multiline=True,
         min_lines=9,
         max_lines=14,
@@ -56,12 +69,14 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
         border_radius=8,
         options=[ft.dropdown.Option(k, k) for k in SAMPLES.keys()],
     )
-    output_text.value = simulator.run_code(lang_key, code_tf.value)
+    output_text.value = _tr_output(simulator.run_code(lang_key, code_tf.value), ui_lang)
 
     def on_lang_change(e):
         chosen = lang_dd.value or "Python"
-        code_tf.value = SAMPLES.get(chosen, SAMPLES["Python"])
-        output_text.value = simulator.run_code(chosen, code_tf.value)
+        cur_l = _cur_lang(output_text)
+        cur_samples = get_samples(cur_l)
+        code_tf.value = cur_samples.get(chosen, cur_samples["Python"])
+        output_text.value = _tr_output(simulator.run_code(chosen, code_tf.value), cur_l)
         try:
             if getattr(output_text, "page", None):
                 code_tf.update()
@@ -76,10 +91,10 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
         value="binary_search",
         border_radius=8,
         options=[
-            ft.dropdown.Option("binary_search", "Binary Search O(log n)"),
-            ft.dropdown.Option("linear_search", "Linear Search O(n)"),
-            ft.dropdown.Option("merge_sort", "Merge Sort O(n log n)"),
-            ft.dropdown.Option("insertion_sort", "Insertion Sort O(n^2)"),
+            ft.dropdown.Option("binary_search", "Pencarian Biner O(log n)"),
+            ft.dropdown.Option("linear_search", "Pencarian Linear O(n)"),
+            ft.dropdown.Option("merge_sort", "Pengurutan Gabung O(n log n)"),
+            ft.dropdown.Option("insertion_sort", "Pengurutan Sisip O(n^2)"),
         ],
     )
     arr_tf = ft.TextField(label="Deretan angka (pisahkan koma)", value="42, 15, 8, 99, 23, 4, 16, 55", border_radius=8)
@@ -88,18 +103,19 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
     algo_steps_col = ft.Column(spacing=8)
 
     def run_algo(e=None):
+        cur_l = _cur_lang(algo_steps_col)
         steps, summary = simulator.simulate_algorithm(
             algo_dd.value or "binary_search",
             arr_tf.value or "",
             target_tf.value or "",
         )
-        algo_summary.value = summary
+        algo_summary.value = translate(summary, cur_l)
         algo_steps_col.controls = [
             ft.Container(
                 bgcolor=ft.colors.SURFACE_VARIANT,
                 padding=10,
                 border_radius=8,
-                content=ft.Text(st, font_family="monospace", size=12, color=ft.colors.ON_SURFACE),
+                content=ft.Text(translate(st, cur_l), font_family="monospace", size=12, color=ft.colors.ON_SURFACE),
             )
             for st in steps
         ]
@@ -121,7 +137,7 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
                 ft.Row(
                     [
                         section_heading("Contoh Kode:"),
-                        ft.Row([lang_dd, green_button("Run ❯", run_editor)], spacing=10, wrap=True),
+                        ft.Row([lang_dd, green_button("Jalankan ❯", run_editor)], spacing=10, wrap=True),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -147,7 +163,7 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) 
                 ft.Row(
                     [
                         section_heading("Simulasi"),
-                        green_button("Run ❯", run_algo),
+                        green_button("Jalankan ❯", run_algo),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -214,11 +230,12 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
             except TypeError:
                 on_back_click(e)
 
-    sim_cards = create_simulator_cards(lang_name=lang_name, initial_code=initial_code)
+    ui_lang = getattr(page, "_ug_lang", "id") if page else "id"
+    sim_cards = create_simulator_cards(lang_name=lang_name, initial_code=initial_code, ui_lang=ui_lang)
 
     return ft.Column(
         [
-            page_banner("UG-Stack Spaces", "Ruang eksperimen kode", mobile),
+            page_banner("Ruang Kode UG-Stack", "Ruang eksperimen kode", mobile),
             ft.Container(
                 padding=pad(mobile),
                 content=ft.Column(
@@ -226,7 +243,7 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
                         ft.Row(
                             [
                                 ft.TextButton("❮ Kembali", on_click=handle_back),
-                                chip("Try Spaces", "#D9EEE1"),
+                                chip("Coba Ruang Kode", "#D9EEE1"),
                             ],
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             wrap=True,
