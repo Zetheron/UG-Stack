@@ -2,12 +2,14 @@ import flet as ft
 
 from components.ui import GREEN, card, chip, dark_button, green_button, page_banner, pad
 from content.languages import LANGS
+from content.lessons import LESSONS
 from content.quizzes import PASS_PERCENT
 from services import quiz as quiz_service
 from services import quiz_admin
+from views.tryit import create_simulator_cards
 
 
-def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz):
+def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit=None):
     results = quiz_service.get_results(user["username"]) if user else {}
     cards = []
     for l in LANGS:
@@ -18,24 +20,33 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz):
             status = chip(f"Terbaik {rec['best']}% (belum lulus)", "#FFE0B2")
         else:
             status = chip("Belum dicoba", "#EEEEEE")
+        sample_code = LESSONS[l["key"]][0]["code"]
+        action_buttons = [green_button("Mulai quiz ❯", lambda e, k=l["key"]: on_open_quiz(k))]
+        if on_tryit:
+            action_buttons.append(
+                dark_button("Try it Yourself ❯", lambda e, n=l["name"], c=sample_code: on_tryit(n, c))
+            )
         cards.append(card(col={"xs": 12, "sm": 6, "lg": 4}, content=ft.Column([
             ft.Row([ft.Text(l["icon"], size=26), ft.Text(f"Quiz {l['name']}", size=18, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE)], spacing=10),
             ft.Text(f"{len(quiz_admin.get_questions(l['key']))} soal pilihan ganda. Lulus bila nilai minimal {PASS_PERCENT}%.", size=13, color=ft.colors.ON_SURFACE_VARIANT),
             status,
-            green_button("Mulai quiz ❯", lambda e, k=l["key"]: on_open_quiz(k)),
+            ft.Row(action_buttons, wrap=True, spacing=8),
         ], spacing=8)))
     note = "Login agar skor tersimpan dan Anda bisa mendapatkan sertifikat." if not user else \
         f"Skor Anda tersimpan otomatis, {user['username']}."
+    sim_cards = create_simulator_cards("Python")
     return ft.Column([
         page_banner("Latihan dan Quiz", "Uji pemahaman Anda setelah mempelajari tiap bahasa.", mobile),
         ft.Container(padding=pad(mobile), content=ft.Column([
             ft.Text(note, size=14, color=ft.colors.ON_SURFACE_VARIANT),
             ft.ResponsiveRow(cards, spacing=14, run_spacing=14),
+            ft.Divider(height=24),
+            *sim_cards,
         ], spacing=14)),
     ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
 
-def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_login, on_certificate, on_retry, on_lesson):
+def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_login, on_certificate, on_retry, on_lesson, on_tryit=None):
     key = lang["key"]
     questions = quiz_admin.get_questions(key)
     groups, feedback = [], []
@@ -81,10 +92,16 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
         result_box.controls = controls
         page.update()
 
+    top_actions = [ft.TextButton("❮ Semua quiz", on_click=lambda e: on_back())]
+    if on_tryit:
+        top_actions.append(
+            green_button("Try it Yourself ❯", lambda e: on_tryit(lang["name"], LESSONS[key][0]["code"]))
+        )
+
     return ft.Column([
         page_banner(f"Quiz {lang['name']}", f"{len(questions)} soal. Lulus bila nilai minimal {PASS_PERCENT}%.", mobile),
         ft.Container(padding=pad(mobile), content=ft.Column([
-            ft.TextButton("❮ Semua quiz", on_click=lambda e: on_back()),
+            ft.Row(top_actions, alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
             *q_controls, submit_btn, result_box,
         ], spacing=12)),
     ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)

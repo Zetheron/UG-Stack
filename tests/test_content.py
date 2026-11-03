@@ -28,7 +28,7 @@ class TestKonten(unittest.TestCase):
             k = lang["key"]
             self.assertGreaterEqual(len(LESSONS[k]), 4, k)
             self.assertGreaterEqual(len(REFERENCE[k]), 6, k)
-            self.assertEqual(len(QUIZZES[k]), 8, k)
+            self.assertEqual(len(QUIZZES[k]), 20, k)
             self.assertTrue(lang["docs_url"].startswith("https://"))
 
     def test_T19_soal_quiz_valid(self):
@@ -52,26 +52,28 @@ class TestQuizSertifikat(IsolatedStorage):
         return [q["answer"] for q in QUIZZES[k]]
 
     def test_T21_penilaian_quiz(self):
+        qs = QUIZZES["python"]
+        n = len(qs)
         r = quiz.grade("python", self.benar("python"))
-        self.assertEqual((r["correct"], r["percent"], r["passed"]), (len(qs), 100.0, True))
-        r = quiz.grade("python", [None] * 8)                 # belum dijawab
+        self.assertEqual((r["correct"], r["percent"], r["passed"]), (n, 100.0, True))
+        r = quiz.grade("python", [None] * n)                 # belum dijawab
         self.assertEqual((r["correct"], r["passed"]), (0, False))
-        salah = [(q["answer"] + 1) % 4 for q in QUIZZES["python"]]
+        salah = [(q["answer"] + 1) % 4 for q in qs]
         self.assertFalse(quiz.grade("python", salah)["passed"])
-        n = len(QUIZZES["python"])
-        r = quiz.grade("python", self.benar("python")[:6] + [None] * (n - 6))    # 6/8 = 75% lulus
+        r = quiz.grade("python", self.benar("python")[:14] + [None] * (n - 14))    # 14/20 = 70% lulus
         self.assertTrue(r["passed"])
-        r = quiz.grade("python", self.benar("python")[:5] + [None] * (n - 5))    # 5/8 = 62,5% belum lulus
+        r = quiz.grade("python", self.benar("python")[:13] + [None] * (n - 13))    # 13/20 = 65% belum lulus
         self.assertFalse(r["passed"])
 
     def test_T22_simpan_skor_dan_sertifikat(self):
+        n = len(QUIZZES["python"])
         self.assertIsNone(quiz.certificate("budi123", "python"))
-        quiz.save_result("budi123", "python", quiz.grade("python", [None] * 8))
+        quiz.save_result("budi123", "python", quiz.grade("python", [None] * n))
         self.assertIsNone(quiz.certificate("budi123", "python"))            # gagal: belum ada sertifikat
         quiz.save_result("budi123", "python", quiz.grade("python", self.benar("python")))
         cert = quiz.certificate("budi123", "python")
         self.assertEqual((cert["lang"], cert["score"]), ("Python", 100))
-        quiz.save_result("budi123", "python", quiz.grade("python", [None] * 8))   # skor terbaik tidak turun
+        quiz.save_result("budi123", "python", quiz.grade("python", [None] * n))   # skor terbaik tidak turun
         self.assertEqual(quiz.get_results("budi123")["python"]["best"], 100)
         self.assertEqual(quiz.get_results("budi123")["python"]["attempts"], 3)
 

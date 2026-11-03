@@ -1,34 +1,28 @@
 """Halaman Simulasi Real-Time: Live Code Sandbox & Visualizer Algoritma Step-by-Step."""
+import inspect
 import flet as ft
 from components.code_editor import SAMPLES
 from components.ui import GREEN, card, chip, green_button, pad, page_banner, section_heading
+from content.languages import find_lang
 from services import simulator
 
 
-def get_tryit_view(*args, **kwargs) -> ft.Control:
-    page = kwargs.get("page")
-    lang_name = kwargs.get("lang_name", kwargs.get("lang", "Python"))
-    initial_code = kwargs.get("initial_code", kwargs.get("code", None))
-    on_back_click = kwargs.get("on_back_click", kwargs.get("go", None))
-    mobile = bool(kwargs.get("mobile", False))
+def _resolve_lang(lang_name: str) -> str:
+    if not lang_name:
+        return "Python"
+    if lang_name in SAMPLES:
+        return lang_name
+    for k in SAMPLES:
+        if k.lower() == str(lang_name).strip().lower():
+            return k
+    found = find_lang(str(lang_name))
+    if found and found["name"] in SAMPLES:
+        return found["name"]
+    return "Python"
 
-    rem = list(args)
-    if rem and hasattr(rem[0], "controls"):
-        page = rem.pop(0)
-    if rem and isinstance(rem[0], str):
-        lang_name = rem.pop(0)
-    if rem:
-        if callable(rem[0]):
-            on_back_click = rem.pop(0)
-        elif isinstance(rem[0], str):
-            initial_code = rem.pop(0)
-    if rem:
-        if isinstance(rem[0], str):
-            initial_code = rem.pop(0)
-        elif callable(rem[0]):
-            on_back_click = rem.pop(0)
 
-    lang_key = lang_name if lang_name in SAMPLES else "Python"
+def create_simulator_cards(lang_name: str = "Python", initial_code: str = None) -> list[ft.Control]:
+    lang_key = _resolve_lang(lang_name)
     output_text = ft.Text(
         "",
         font_family="monospace",
@@ -77,7 +71,7 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
     lang_dd.on_change = on_lang_change
 
     algo_dd = ft.Dropdown(
-        label="Level",
+        label="Algoritma",
         value="binary_search",
         width=220,
         options=[
@@ -87,8 +81,8 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
             ft.dropdown.Option("insertion_sort", "Insertion Sort O(n^2)"),
         ],
     )
-    arr_tf = ft.TextField(label="Judul modul", value="42, 15, 8, 99, 23, 4, 16, 55", expand=True)
-    target_tf = ft.TextField(label="Durasi (menit)", value="23", width=130)
+    arr_tf = ft.TextField(label="Deretan angka (pisahkan koma)", value="42, 15, 8, 99, 23, 4, 16, 55", expand=True)
+    target_tf = ft.TextField(label="Target cari", value="23", width=130)
     algo_summary = ft.Text("", weight=ft.FontWeight.BOLD, size=13, color=GREEN)
     algo_steps_col = ft.Column(spacing=6)
 
@@ -120,15 +114,76 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
     target_tf.on_change = run_algo
     run_algo()
 
+    editor_card = card(ft.Column([
+        section_heading("Contoh Kode:"),
+        ft.Row([lang_dd, green_button("Run ❯", run_editor)], spacing=12, wrap=True),
+        code_tf,
+        ft.Text("Hasil Eksekusi Output:", weight=ft.FontWeight.BOLD, size=14),
+        ft.Container(
+            bgcolor="#1E1F26",
+            padding=15,
+            border_radius=8,
+            content=ft.Column([output_text], spacing=0),
+        ),
+    ], spacing=10))
+
+    algo_card = card(ft.Column([
+        section_heading("Simulasi"),
+        ft.ResponsiveRow([
+            ft.Column([algo_dd], col={"xs": 12, "md": 3}),
+            ft.Column([arr_tf], col={"xs": 12, "md": 5}),
+            ft.Column([target_tf], col={"xs": 6, "md": 2}),
+            ft.Column([green_button("Run ❯", run_algo)], col={"xs": 6, "md": 2}),
+        ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        algo_summary,
+        algo_steps_col,
+    ], spacing=10))
+
+    return [editor_card, algo_card]
+
+
+def get_tryit_view(*args, **kwargs) -> ft.Control:
+    page = kwargs.get("page")
+    lang_name = kwargs.get("lang_name") or kwargs.get("default_lang") or kwargs.get("lang") or "Python"
+    initial_code = kwargs.get("initial_code") or kwargs.get("code")
+    on_back_click = kwargs.get("on_back_click") or kwargs.get("on_back") or kwargs.get("go")
+    mobile = bool(kwargs.get("mobile", False))
+
+    rem = list(args)
+    if rem and hasattr(rem[0], "controls"):
+        page = rem.pop(0)
+    if rem and isinstance(rem[0], str):
+        lang_name = rem.pop(0)
+    if rem:
+        if callable(rem[0]):
+            on_back_click = rem.pop(0)
+        elif isinstance(rem[0], str):
+            initial_code = rem.pop(0)
+    if rem:
+        if isinstance(rem[0], str):
+            initial_code = rem.pop(0)
+        elif callable(rem[0]):
+            on_back_click = rem.pop(0)
+
     def handle_back(e):
-        if callable(on_back_click):
+        if not callable(on_back_click):
+            return
+        try:
+            params = inspect.signature(on_back_click).parameters
+            if len(params) == 0:
+                on_back_click()
+                return
+        except Exception:
+            pass
+        try:
+            on_back_click("exercises")
+        except TypeError:
             try:
-                on_back_click("exercises")
+                on_back_click()
             except TypeError:
-                try:
-                    on_back_click(e)
-                except TypeError:
-                    on_back_click()
+                on_back_click(e)
+
+    sim_cards = create_simulator_cards(lang_name=lang_name, initial_code=initial_code)
 
     return ft.Column([
         page_banner("UG-Stack Spaces", "Ruang eksperimen kode", mobile),
@@ -136,35 +191,13 @@ def get_tryit_view(*args, **kwargs) -> ft.Control:
             padding=pad(mobile),
             content=ft.Column([
                 ft.Row([
-                    ft.TextButton("❮ Semua quiz", on_click=handle_back),
+                    ft.TextButton("❮ Kembali", on_click=handle_back),
                     chip("Try Spaces", "#D9EEE1"),
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
-                card(ft.Column([
-                    section_heading("Contoh Kode:"),
-                    ft.Row([lang_dd, green_button("Run ❯", run_editor)], spacing=12, wrap=True),
-                    code_tf,
-                    ft.Text("Hasil Eksekusi Output:", weight=ft.FontWeight.BOLD, size=14),
-                    ft.Container(
-                        bgcolor="#1E1F26",
-                        padding=15,
-                        border_radius=8,
-                        content=ft.Column([output_text], spacing=0),
-                    ),
-                ], spacing=10)),
-                card(ft.Column([
-                    section_heading("Simulasi"),
-                    ft.ResponsiveRow([
-                        ft.Column([algo_dd], col={"xs": 12, "md": 3}),
-                        ft.Column([arr_tf], col={"xs": 12, "md": 5}),
-                        ft.Column([target_tf], col={"xs": 6, "md": 2}),
-                        ft.Column([green_button("Run ❯", run_algo)], col={"xs": 6, "md": 2}),
-                    ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                    algo_summary,
-                    algo_steps_col,
-                ], spacing=10)),
+                *sim_cards,
             ], spacing=18),
         ),
-    ], spacing=0)
+    ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
 
 create_tryit_view = get_tryit_view

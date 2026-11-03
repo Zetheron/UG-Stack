@@ -5,11 +5,21 @@ SAMPLES = {
     "CSS": "body {\n  background-color: lightblue;\n}\nh1 {\n  color: navy;\n  text-align: center;\n}",
     "JavaScript": "function myFunction() {\n  console.log('Hello from UG-Stack JavaScript!');\n}\nmyFunction();",
     "Python": "def ug_stack_welcome(user):\n    print(f'Selamat Datang {user} di UG-Stack!')\n\nug_stack_welcome('Mahasiswa Gunadarma')",
-    "SQL": "SELECT * FROM Customers\nWHERE Country='Indonesia'\nORDER BY CustomerName;"
+    "SQL": "SELECT * FROM Customers\nWHERE Country='Indonesia'\nORDER BY CustomerName;",
+    "PHP": "<?php\n$nama = \"Mahasiswa Gunadarma\";\necho \"Halo, \" . $nama . \"!\";\n?>",
+    "Java": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Halo dari Java UG-Stack!\");\n  }\n}",
+    "C": "#include <stdio.h>\n\nint main(void) {\n  printf(\"Halo dari C UG-Stack!\\n\");\n  return 0;\n}",
+    "C++": "#include <iostream>\nusing namespace std;\n\nint main() {\n  cout << \"Halo dari C++ UG-Stack!\" << endl;\n  return 0;\n}",
+    "C#": "using System;\n\nclass Program {\n  static void Main() {\n    Console.WriteLine(\"Halo dari C# UG-Stack!\");\n  }\n}",
+    "React": "function App() {\n  return <h1>Halo dari React UG-Stack!</h1>;\n}\nexport default App;",
+    "MySQL": "SELECT nama, prodi, ipk FROM mahasiswa\nWHERE ipk >= 3.5\nORDER BY ipk DESC;",
 }
 
+HOME_TABS = ("HTML", "CSS", "JavaScript", "Python", "SQL")
+
+
 def create_editor_section(on_tryit_click=None):
-    code_text = ft.Text(SAMPLES["HTML"], font_family="monospace", color="#00FF66", size=13)
+    code_text = ft.Text(SAMPLES["HTML"], font_family="monospace", color="#00FF66", size=13, selectable=True)
     active_lang = {"value": "HTML"}
 
     def change_tab(lang):
@@ -25,12 +35,23 @@ def create_editor_section(on_tryit_click=None):
         code_text.update()
         tab_buttons.update()
 
+    def handle_tryit(e):
+        if not on_tryit_click:
+            return
+        lang = active_lang["value"]
+        try:
+            on_tryit_click(lang, SAMPLES[lang])
+        except TypeError:
+            on_tryit_click(lang)
+
     tab_buttons = ft.Row([
-        ft.ElevatedButton("HTML", on_click=lambda e: change_tab("HTML"), bgcolor="#04AA6D", color=ft.colors.WHITE),
-        ft.ElevatedButton("CSS", on_click=lambda e: change_tab("CSS"), bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), color=ft.colors.ON_SURFACE),
-        ft.ElevatedButton("JavaScript", on_click=lambda e: change_tab("JavaScript"), bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), color=ft.colors.ON_SURFACE),
-        ft.ElevatedButton("Python", on_click=lambda e: change_tab("Python"), bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), color=ft.colors.ON_SURFACE),
-        ft.ElevatedButton("SQL", on_click=lambda e: change_tab("SQL"), bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), color=ft.colors.ON_SURFACE),
+        ft.ElevatedButton(
+            lang,
+            on_click=lambda e, l=lang: change_tab(l),
+            bgcolor="#04AA6D" if i == 0 else ft.colors.with_opacity(0.35, ft.colors.OUTLINE),
+            color=ft.colors.WHITE if i == 0 else ft.colors.ON_SURFACE,
+        )
+        for i, lang in enumerate(HOME_TABS)
     ], scroll=ft.ScrollMode.AUTO, spacing=8, alignment=ft.MainAxisAlignment.CENTER)
 
     return ft.Container(
@@ -44,7 +65,6 @@ def create_editor_section(on_tryit_click=None):
                 ft.Container(height=10),
                 tab_buttons,
                 ft.Container(height=15),
-                
                 ft.Container(
                     bgcolor=ft.colors.SURFACE,
                     border_radius=10,
@@ -60,7 +80,7 @@ def create_editor_section(on_tryit_click=None):
                             bgcolor="#282A35",
                             padding=15,
                             border_radius=6,
-                            content=ft.Row([code_text], scroll=ft.ScrollMode.AUTO)
+                            content=ft.Column([code_text], spacing=0)
                         ),
                         ft.Container(height=10),
                         ft.Row([
@@ -69,7 +89,7 @@ def create_editor_section(on_tryit_click=None):
                                 bgcolor="#04AA6D",
                                 color=ft.colors.WHITE,
                                 style=ft.ButtonStyle(padding=ft.padding.symmetric(horizontal=25, vertical=15)),
-                                on_click=lambda e: on_tryit_click(active_lang["value"]) if on_tryit_click else None
+                                on_click=handle_tryit
                             )
                         ])
                     ])

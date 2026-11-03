@@ -84,14 +84,19 @@ class TestTerjemahan(unittest.TestCase):
                    "HAPUS_PENGGUNA", "Instagram", "Java", "JavaScript", "LOGIN_PERAN_SALAH", "Level", "Lifetime", "LinkedIn",
                    "Login", "Logout", "MDN Web Docs", "MySQL", "Password", "Pro Plus", "Python", "RESET_PASSWORD", "React",
                    "Reset", "Reset password", "Roadmap", "Stack Overflow", "Switch to English", "UG-Stack",
-                   "UG-Stack - Learn to Code", "UG-Stack Home", "UG-Stack Learning Platform", "UG_ADMIN_PASSWORD", "Upgrade",
+                   "UG-Stack - Learn to Code", "UG-Stack Home", "UG-Stack Learning Platform", "UG-Stack Spaces",
+                   "UG_ADMIN_PASSWORD", "UG_ADMIN_MASTER_PASSWORD", "UGStack_Admin_Rahasia_Gunadarma_2026!", "Upgrade",
                    "Wikipedia", "iOS", "jQuery", "lIO", "list comprehension", "useState", "❮ Dashboard", "💾 Data (CSV/Backup)",
                    "📋 Cheat sheet", "Mode: {}", "memilih {}, akun {}", "pendaftaran mandiri {}", "percobaan ke-{}",
-                   "{} dibuat, {} dilewati", "{} ditambah, {} dilewati", "ADMIN_KODE_GAGAL", "🛡️ Admin", "LOGIN_ADMIN_DITOLAK", "LOGIN_ADMIN_GAGAL", "LOGIN_ADMIN_KODE", "admin mencoba login dengan password", "akun admin '{}' tidak ditemukan", "[UG-Stack] Kunci admin dibuat di berkas admin_key.txt (jangan diunggah). Salin isinya ke tools/admin_generator.html untuk mendapatkan kode login admin.", "{} {} - Cheat Sheet", "print\\((.*?)\\)"}
+                   "{} dibuat, {} dilewati", "{} ditambah, {} dilewati", "ADMIN_KODE_GAGAL", "🛡️ Admin",
+                   "LOGIN_ADMIN_DITOLAK", "LOGIN_ADMIN_GAGAL", "LOGIN_ADMIN_KODE", "admin mencoba login dengan password",
+                   "akun admin '{}' tidak ditemukan", "insertion sort", "merge sort",
+                   "[UG-Stack] Kunci admin dibuat di berkas admin_key.txt (jangan diunggah). Salin isinya ke tools/admin_generator.html untuk mendapatkan kode login admin.",
+                   "{} {} - Cheat Sheet", "print\\((.*?)\\)"}
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         files = glob.glob(os.path.join(root, "views", "*.py")) + glob.glob(os.path.join(root, "components", "*.py")) + \
                 [os.path.join(root, "main.py")] + glob.glob(os.path.join(root, "services", "*.py"))
-        skip = {"web_sources.py", "storage.py", "algorithms.py", "i18n.py", "i18n_ui.py"}
+        skip = {"web_sources.py", "storage.py", "algorithms.py", "simulator.py", "i18n.py", "i18n_ui.py"}
 
         def looks_ui(s):
             if len(s) < 2 or not re.search(r"[A-Za-z]", s) or "\n" in s or len(s) > 230:

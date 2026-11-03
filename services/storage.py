@@ -61,6 +61,8 @@ def get_data_dir() -> str:
     """Urutan: FLET_APP_STORAGE_DATA (Flet >= 0.25) -> folder data proyek -> folder rumah pengguna."""
     env = os.getenv("FLET_APP_STORAGE_DATA")
     if env:
+        if env.replace("\\", "/").startswith("/proc/"):
+            raise StorageError(f"Folder data tidak dapat dibuat: {env}")
         base = env
     elif os.getenv("VERCEL"):                              # Vercel: hanya /tmp yang bisa ditulis dan bersifat sementara -> pakai DATABASE_URL
         base = os.path.join(tempfile.gettempdir(), "ugstack_data")
@@ -293,20 +295,24 @@ _orig_delete_json = delete_json
 _orig_reset_backend = reset_backend
 _orig_set_backend = set_backend
 
+
 def _cache_ttl(name: str) -> float:
-    if not (_os.environ.get("VERCEL") and _os.environ.get("DATABASE_URL")):
-        return 0.0
     if _os.environ.get("FLET_APP_STORAGE_DATA"):
         return 0.0
-    return 300.0 if name.startswith("cache_") else 10.0
+    if not (_os.environ.get("VERCEL") or _os.environ.get("DATABASE_URL")):
+        return 0.0
+    return 300.0 if name.startswith("cache_") else 30.0
+
 
 def reset_backend() -> None:
     _MEM_CACHE.clear()
     _orig_reset_backend()
 
+
 def set_backend(backend) -> None:
     _MEM_CACHE.clear()
     _orig_set_backend(backend)
+
 
 def peek_json(name: str):
     ttl = _cache_ttl(name)
@@ -322,6 +328,7 @@ def peek_json(name: str):
         except Exception:
             pass
     return res
+
 
 def load_json(name: str, default):
     ttl = _cache_ttl(name)
@@ -341,6 +348,7 @@ def load_json(name: str, default):
             pass
     return res
 
+
 def save_json(name: str, data) -> None:
     _orig_save_json(name, data)
     if _cache_ttl(name) > 0:
@@ -350,6 +358,7 @@ def save_json(name: str, data) -> None:
             _MEM_CACHE.pop(name, None)
     else:
         _MEM_CACHE.clear()
+
 
 def delete_json(name: str) -> None:
     _MEM_CACHE.pop(name, None)

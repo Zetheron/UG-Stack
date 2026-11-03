@@ -49,6 +49,7 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
 
     username = ft.TextField(label=ID_LABEL[role] if is_login else "NPM / Username (4-20 huruf/angka)", autofocus=True,
                             border_radius=8)
+    npm_field = ft.TextField(label="NPM Mahasiswa (opsional, untuk sinkronisasi)", border_radius=8, visible=not is_login)
     password = ft.TextField(label="Password", password=True, can_reveal_password=True, border_radius=8)
     confirm = ft.TextField(label="Konfirmasi Password", password=True, can_reveal_password=True,
                            border_radius=8, visible=not is_login)

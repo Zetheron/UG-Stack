@@ -314,7 +314,7 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
         steps.append(f"Data awal: {arr}")
         found = False
         for i, v in enumerate(arr):
-            steps.append(f"Cek mid [{i}] = {v} (target: {target})")
+            steps.append(f"Cek indeks [{i}] = {v} (target: {target})")
             if v == target:
                 steps.append(f"✓ DITEMUKAN pada indeks {i}!")
                 found = True
@@ -322,7 +322,7 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
         if not found:
             steps.append(f"✗ Target {target} tidak ditemukan.")
         dur = (time.perf_counter() - t0) * 1000
-        return steps, f"Binary Search selesai dalam {dur:.3f} ms (kompleksitas O(log n))."
+        return steps, f"Linear Search selesai dalam {dur:.3f} ms (kompleksitas O(n))."
 
     if algo == "insertion_sort":
         arr = list(data[:15])
@@ -334,9 +334,10 @@ def simulate_algorithm(algo: str, text_nums: str, text_target: str = "") -> tupl
                 arr[j + 1] = arr[j]
                 j -= 1
             arr[j + 1] = key
-            steps.append(f"✓ Hasil akhir: {arr}")
+            steps.append(f"Sisipkan {key} -> {arr}")
+        steps.append(f"✓ Hasil akhir: {arr}")
         dur = (time.perf_counter() - t0) * 1000
-        return steps, f"Merge Sort selesai dalam {dur:.3f} ms (kompleksitas stabil O(n log n))."
+        return steps, f"Insertion Sort selesai dalam {dur:.3f} ms (kompleksitas O(n^2))."
 
     arr = list(data[:15])
     steps.append(f"Data awal: {arr}")

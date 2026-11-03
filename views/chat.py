@@ -1,14 +1,18 @@
 """Tampilan Ruang Diskusi (Chat) Mahasiswa, Dosen, Admin & Bot Asisten UG-Stack."""
 import flet as ft
 from components.ui import GREEN, card, chip, green_button, pad, page_banner, section_heading
-from services import chat, roles
+from services import chat
 
 
 def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *args, **kwargs) -> ft.Control:
+    if isinstance(go, bool):
+        mobile = go
+        go = args[0] if args and callable(args[0]) else kwargs.get("go")
     active_user = user if user is not None else getattr(page, "_ug_user", None)
     state = {"channel": "umum"}
     msg_col = ft.Column(spacing=8)
     tf = ft.TextField(hint_text="Tulis pesan atau ketik @bot...", expand=True, border_radius=8)
+    ch_buttons_row = ft.Row(wrap=True, spacing=6)
 
     def render():
         msgs = chat.list_messages(state["channel"])
@@ -22,15 +26,24 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
                 ft.Text(m.get("text", ""), size=13, selectable=True),
             ], spacing=3), padding=10) for m in msgs
         ] or [ft.Text("Belum ada data.", size=13)]
+        for btn in ch_buttons_row.controls:
+            active = btn.data == state["channel"]
+            btn.bgcolor = GREEN if active else None
+            btn.color = ft.colors.WHITE if active else None
         if getattr(msg_col, "page", None):
             msg_col.update()
+        if getattr(ch_buttons_row, "page", None):
+            ch_buttons_row.update()
 
     def send(e=None, text=""):
         u = active_user or getattr(page, "_ug_user", None)
         if not u:
             page.show_snack("Silakan login terlebih dahulu.")
             if callable(go):
-                go("auth")
+                try:
+                    go("auth")
+                except TypeError:
+                    pass
             return
         val = text or tf.value
         ok, msg = chat.send_message(u, state["channel"], val)
@@ -48,16 +61,18 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
         state["channel"] = c
         render()
 
+    ch_buttons_row.controls = [
+        ft.ElevatedButton("#umum", data="umum", bgcolor=GREEN, color=ft.colors.WHITE, on_click=lambda e: set_ch("umum")),
+        ft.ElevatedButton("#tanya-dosen", data="tanya-dosen", on_click=lambda e: set_ch("tanya-dosen")),
+        ft.ElevatedButton("#python-web", data="python-web", on_click=lambda e: set_ch("python-web")),
+        ft.ElevatedButton("#algoritma", data="algoritma", on_click=lambda e: set_ch("algoritma")),
+    ]
+
     render()
     return ft.Column([
         page_banner("Ruang Diskusi & Tanya Dosen", "Kanal diskusi mahasiswa, dosen, dan Bot Asisten UG-Stack.", mobile),
         ft.Container(padding=pad(mobile), content=ft.Column([
-            ft.Row([
-                ft.ElevatedButton("#umum", bgcolor=GREEN, color=ft.colors.WHITE, on_click=lambda e: set_ch("umum")),
-                ft.ElevatedButton("#tanya-dosen", on_click=lambda e: set_ch("tanya-dosen")),
-                ft.ElevatedButton("#python-web", on_click=lambda e: set_ch("python-web")),
-                ft.ElevatedButton("#algoritma", on_click=lambda e: set_ch("algoritma")),
-            ], wrap=True, spacing=6),
+            ch_buttons_row,
             card(ft.Column([
                 ft.Row([tf, green_button("Kirim", lambda e: send())]),
                 ft.Row([
@@ -68,6 +83,7 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
             section_heading("Pesan Terbaru"),
             msg_col,
         ], spacing=12))
-    ], spacing=0)
+    ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+
 
 get_chat_view = create_chat_view

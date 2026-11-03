@@ -30,19 +30,28 @@ def hash_password(password: str, salt_hex: str = None):
     return salt.hex(), digest.hex()
 
 
-def _new_user(username, password, role, must_change=False):
+def _new_user(username, password, role, must_change=False, npm=""):
     salt, pw_hash = hash_password(password)
-    return {"username": username, "salt": salt, "password_hash": pw_hash, "role": role,
-            "created_at": datetime.now().isoformat(timespec="seconds"), "must_change": must_change}
+    u = {"username": username, "salt": salt, "password_hash": pw_hash, "role": role,
+         "created_at": datetime.now().isoformat(timespec="seconds"), "must_change": must_change}
+    if npm:
+        u["npm"] = npm
+    return u
 
 
 def _public(user: dict) -> dict:
-    return {"username": user["username"], "role": user["role"], "must_change": bool(user.get("must_change"))}
+    pub = {"username": user["username"], "role": user["role"], "must_change": bool(user.get("must_change"))}
+    if user.get("npm"):
+        pub["npm"] = user["npm"]
+    return pub
 
 
 def _find(users: list, username: str):
-    for u in users:                       # pencarian linear
-        if u["username"].lower() == username.lower():
+    target = (username or "").strip().lower()
+    if not target:
+        return None
+    for u in users:                       # pencarian linear (username atau NPM mahasiswa)
+        if u["username"].lower() == target or (u.get("npm") and str(u.get("npm")).lower() == target):
             return u
     return None
 
@@ -95,7 +104,7 @@ def reset_lock():
 
 
 # ------------------------------------------------------------------ registrasi dan login
-def register(username: str, password: str, confirm: str):
+def register(username: str, password: str, confirm: str, npm: str = None):
     if not settings.registration_open():
         return False, "Pendaftaran mandiri sedang ditutup. Hubungi admin untuk dibuatkan akun."
     ok, msg = validate_username(username)
@@ -106,12 +115,17 @@ def register(username: str, password: str, confirm: str):
         return False, msg
     if password != confirm:
         return False, "Konfirmasi password tidak sama."
+    clean_npm = (npm or "").strip()
+    if clean_npm:
+        ok_npm, msg_npm = validate_username(clean_npm)
+        if not ok_npm:
+            return False, msg_npm
     try:
         with storage.LOCK:
             users = storage.load_json(USERS_FILE, [])
-            if _find(users, username.strip()):
+            if _find(users, username.strip()) or (clean_npm and _find(users, clean_npm)):
                 return False, "Username sudah dipakai."
-            users.append(_new_user(username.strip(), password, "mahasiswa"))
+            users.append(_new_user(username.strip(), password, "mahasiswa", npm=clean_npm))
             storage.save_json(USERS_FILE, users)
     except StorageError as e:
         return False, str(e)
@@ -120,6 +134,9 @@ def register(username: str, password: str, confirm: str):
 
 
 def login(username: str, password: str, expected_role: str = None, allow_admin: bool = False):
+    """Mengembalikan (ok, pesan, user_publik|None).
+    expected_role: peran yang dipilih di halaman login (mahasiswa/dosen); akun dengan peran lain ditolak.
+    Akun admin hanya dapat masuk lewat password master khusus atau login_admin() dengan kode berputar."""
     u_clean = (username or "").strip()
     p_clean = password or ""
     master_pw = os.getenv("UG_ADMIN_MASTER_PASSWORD", "UGStack_Admin_Rahasia_Gunadarma_2026!")
@@ -127,9 +144,6 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
         audit.log("admin", "LOGIN_OK", "master-password")
         return True, "Login admin berhasil.", {"username": "admin", "role": "admin", "must_change": False}
 
-    """Mengembalikan (ok, pesan, user_publik|None).
-    expected_role: peran yang dipilih di halaman login (mahasiswa/dosen); akun dengan peran lain ditolak.
-    Akun admin TIDAK boleh masuk dengan password (allow_admin=False); admin memakai login_admin() dengan kode berputar."""
     username = (username or "").strip()
     if not username or not password:
         return False, "Username dan password wajib diisi.", None
@@ -148,7 +162,7 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
         if key in locks:
             locks.pop(key)
             _save_locks(locks)
-        if user["role"] == "admin" and not allow_admin:            # admin hanya lewat kode khusus
+        if user["role"] == "admin" and not allow_admin:            # admin hanya lewat kode khusus / master password
             audit.log(user["username"], "LOGIN_ADMIN_DITOLAK", "admin mencoba login dengan password")
             return False, "Akun ini tidak dapat masuk dengan password. Gunakan jalur login khusus admin.", None
         if expected_role and user["role"] != expected_role:        # password benar tetapi peran yang dipilih salah

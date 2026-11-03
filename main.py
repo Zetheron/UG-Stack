@@ -35,7 +35,7 @@ ADMIN_VIEWS = {"admin"}                       # halaman khusus admin
 SESSION_TIMEOUT = 15 * 60                     # detik tanpa aktivitas sebelum logout otomatis
 FULLSCREEN_VIEWS = {"tryit"}                  # halaman tanpa appbar/footer
 NAV_OF = {"tutorials": "tutorials", "lesson": "tutorials", "references": "references", "exercises": "exercises",
-          "quiz": "exercises", "certificates": "certificates", "certificate": "certificates",
+          "quiz": "exercises", "chat": "chat", "certificates": "certificates", "certificate": "certificates",
           "roadmap": "roadmap", "plans": "upgrade", "courses": "paid_courses"}
 
 
@@ -109,8 +109,8 @@ def main(page: ft.Page):
                 try:
                     import json as _json
                     saved_view = _json.loads(load_pref("view", "") or "{}")
-                    if saved_view.get("view") in ("dashboard", "lesson", "references", "exercises", "certificates", "tutorials",
-                                                  "roadmap", "plans", "courses", "search", "admin"):
+                    if saved_view.get("view") in ("dashboard", "lesson", "references", "exercises", "chat", "certificates",
+                                                  "tutorials", "roadmap", "plans", "courses", "search", "admin", "tryit"):
                         state["view"], state["args"] = saved_view["view"], saved_view.get("args") or {}
                 except (ValueError, TypeError, AttributeError):
                     pass
@@ -227,9 +227,10 @@ def main(page: ft.Page):
 
     def handle_header_nav(key):
         routes = {"tutorials": lambda: go("tutorials"), "references": lambda: go("references", lang="python"),
-                  "exercises": lambda: go("exercises"), "certificates": lambda: go("certificates"),
-                  "roadmap": lambda: go("roadmap"), "upgrade": lambda: go("plans"), "paid_courses": lambda: go("courses")}
-        routes[key]()
+                  "exercises": lambda: go("exercises"), "chat": lambda: go("chat"),
+                  "certificates": lambda: go("certificates"), "roadmap": lambda: go("roadmap"),
+                  "upgrade": lambda: go("plans"), "paid_courses": lambda: go("courses")}
+        routes.get(key, open_home)()
 
     def handle_footer(text):
         low = text.strip().lower()
@@ -279,11 +280,12 @@ def main(page: ft.Page):
         if view == "references":
             return get_references_view(page, BY_KEY[args.get("lang", "python")], mobile, lambda k: go("references", lang=k))
         if view == "exercises":
-            return get_exercises_view(page, user, mobile, lambda k: go("quiz", lang=k))
+            return get_exercises_view(page, user, mobile, lambda k: go("quiz", lang=k), on_tryit=open_tryit)
         if view == "quiz":
             return get_quiz_view(page, BY_KEY[args["lang"]], user, mobile, on_back=lambda: go("exercises"),
                                  on_login=lambda: open_auth("login"), on_certificate=lambda k: go("certificate", lang=k),
-                                 on_retry=lambda k: go("quiz", lang=k), on_lesson=lambda k: open_lang(k))
+                                 on_retry=lambda k: go("quiz", lang=k), on_lesson=lambda k: open_lang(k),
+                                 on_tryit=open_tryit)
         if view == "certificates":
             return get_certificates_view(page, user, mobile, on_login=lambda: open_auth("login"),
                                          on_quiz=lambda k: go("quiz", lang=k), on_view_cert=lambda k: go("certificate", lang=k))
@@ -295,7 +297,7 @@ def main(page: ft.Page):
         if view == "roadmap":
             return get_roadmap_view(page, mobile, open_lang)
         if view == "chat":
-            return create_chat_view(page, mobile, open_lang)
+            return create_chat_view(page, go=go, mobile=mobile, user=user)
         if view == "info":
             return get_info_view(page, args.get("key", "tentang"), mobile, open_home)
         if view == "plans":
@@ -304,7 +306,7 @@ def main(page: ft.Page):
             return get_paid_courses_view(page, user, mobile, on_login=lambda: open_auth("login"),
                                          on_changed=lambda: go("courses"), on_open_lang=open_lang)
         if view == "tryit":
-            return get_tryit_view(page, default_lang=args.get("lang", "HTML"), on_back=go_back, code=args.get("code"))
+            return get_tryit_view(page, default_lang=args.get("lang", "HTML"), on_back=go_back, code=args.get("code"), mobile=mobile)
         return get_home_view(
             page, user=user, progress_text=progress_text(), on_tryit_click=open_tryit, on_search=open_search,
             on_roadmap_click=lambda: go("roadmap"), on_primary_click=primary_action,
