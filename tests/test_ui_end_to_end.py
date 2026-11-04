@@ -74,6 +74,9 @@ class FakePage:
     def scroll_to(self, **kwargs):
         pass
 
+    def get_upload_url(self, file_name, expires):
+        return f"/upload?f={file_name}&e={expires}"
+
 
 def walk_controls(root):
     seen = set()
@@ -249,6 +252,29 @@ class TestEndToEndUI(unittest.TestCase):
             self.assertTrue(save_avatar_btns)
             save_avatar_btns[0].on_click(DummyEvent(save_avatar_btns[0]))
             self.assertTrue(auth.get_avatar("mhs_test").startswith("https://"))
+
+            # Uji unggah file foto dari Browser Web (f.path = None) via FilePicker
+            foto_btns = find_buttons(page.controls[1], "Foto Profil")
+            foto_btns[0].on_click(DummyEvent(foto_btns[0]))
+            picker = getattr(page, "_ug_avatar_picker", None)
+            self.assertIsNotNone(picker)
+            from views.account import UPLOAD_DIR
+            with open(os.path.join(UPLOAD_DIR, "avatar__mhs_test.png"), "wb") as fh:
+                fh.write(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+            fake_picked = type("FakeResult", (), {
+                "files": [type("FakeFile", (), {"name": "foto_saya.png", "path": None, "size": 128})()]
+            })()
+            picker._FilePicker__on_result.get_handler()(DummyEvent(picker)) if False else None
+            # Panggil handler on_result dan on_upload seperti saat browser memilih file
+            for h in picker._FilePicker__on_result._EventHandler__handlers:
+                h(fake_picked)
+            with open(os.path.join(UPLOAD_DIR, "avatar__mhs_test.png"), "wb") as fh:
+                fh.write(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+            for h in picker._FilePicker__on_upload._EventHandler__handlers:
+                h(type("FakeUpload", (), {"file_name": "foto_saya.png", "progress": 1.0, "error": None})())
+            save_avatar_btns = find_buttons(page.dialog, "Simpan")
+            save_avatar_btns[0].on_click(DummyEvent(save_avatar_btns[0]))
+            self.assertTrue(auth.get_avatar("mhs_test").startswith("data:image/png;base64,"))
 
             # Buka Latihan -> Mulai Quiz Python -> Jawab semua benar -> Lihat Sertifikat
             ex_btns = find_buttons(page.appbar, "Latihan")

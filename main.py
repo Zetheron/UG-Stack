@@ -11,7 +11,7 @@ from content.languages import BY_KEY, find_lang
 from services import admin_code, auth, i18n, modules as module_service, progress, sessions, storage
 from services.roles import can_manage_content
 from services.storage import StorageError
-from views.account import open_change_password
+from views.account import UPLOAD_DIR, open_change_password
 from views.admin import get_admin_view
 from views.auth_view import get_auth_view
 from views.certificates import get_certificate_detail_view, get_certificates_view
@@ -396,7 +396,11 @@ def _make_asgi_app():
         import flet.fastapi as flet_fastapi
     except ImportError:
         import flet_fastapi
-    return flet_fastapi.app(main)
+    return flet_fastapi.app(
+        main,
+        upload_dir=UPLOAD_DIR,
+        secret_key=os.environ.get("FLET_SECRET_KEY", "ugstack-upload-secret-2026"),
+    )
 
 
 app = _make_asgi_app()
@@ -410,9 +414,9 @@ def is_packaged_app() -> bool:
 if __name__ == "__main__":
     if os.getenv("PORT"):
         # Server online (Render, Hugging Face Spaces, Docker, dll.): dengarkan semua alamat pada port yang diberikan
-        ft.app(target=main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=int(os.environ["PORT"]))
+        ft.app(target=main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=int(os.environ["PORT"]), upload_dir=UPLOAD_DIR)
     elif is_packaged_app():
-        ft.app(target=main)
+        ft.app(target=main, upload_dir=UPLOAD_DIR)
     else:
         # UG_HOST=0.0.0.0 -> bisa dibuka dari HP lewat Wi-Fi yang sama (http://IP-laptop:8550)
-        ft.app(target=main, view=ft.AppView.WEB_BROWSER, host=os.getenv("UG_HOST", "127.0.0.1"), port=8550)
+        ft.app(target=main, view=ft.AppView.WEB_BROWSER, host=os.getenv("UG_HOST", "127.0.0.1"), port=8550, upload_dir=UPLOAD_DIR)

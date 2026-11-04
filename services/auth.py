@@ -421,7 +421,19 @@ def set_user_npm(username: str, npm: str) -> tuple[bool, str]:
     return False, "Pengguna tidak ditemukan."
 
 
-MAX_AVATAR_LEN = 1_500_000
+MAX_AVATAR_LEN = 4_500_000
+_TEMP_AVATARS: dict[str, str] = {}
+
+
+def store_temp_avatar(username: str, data_uri: str) -> None:
+    key = (username or "").strip().lower()
+    if key and data_uri:
+        _TEMP_AVATARS[key] = data_uri
+
+
+def pop_temp_avatar(username: str) -> str:
+    key = (username or "").strip().lower()
+    return _TEMP_AVATARS.pop(key, "") if key else ""
 
 
 def get_avatar(username: str) -> str:

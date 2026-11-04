@@ -1,10 +1,60 @@
 import base64
 import os
+import tempfile
+import threading
+import time
 
 import flet as ft
 
 from components.ui import GREEN
 from services import auth
+
+UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "ugstack_uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.environ.setdefault("FLET_SECRET_KEY", "ugstack-upload-secret-2026")
+os.environ.setdefault("FLET_UPLOAD_DIR", UPLOAD_DIR)
+
+
+def _encode_file_to_data_uri(fpath: str) -> str:
+    with open(fpath, "rb") as fh:
+        raw = fh.read()
+    ext = os.path.splitext(fpath)[1].lower().lstrip(".") or "png"
+    mime = "jpeg" if ext == "jpg" else ext
+    return f"data:image/{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+
+
+def _install_upload_hook() -> None:
+    try:
+        from flet.fastapi.flet_upload import FletUpload
+        if getattr(FletUpload, "_ug_hooked", False):
+            return
+        orig_handle = FletUpload.handle
+
+        async def _wrapped_handle(self, request):
+            await orig_handle(self, request)
+            try:
+                file_name = request.query_params.get("f", "")
+                upload_dir = getattr(self, "_FletUpload__upload_dir", UPLOAD_DIR)
+                full_path = os.path.realpath(os.path.join(upload_dir, file_name))
+                if file_name.startswith("avatar__") and os.path.isfile(full_path):
+                    stem = os.path.splitext(file_name)[0]
+                    uname = stem[len("avatar__"):]
+                    data_uri = _encode_file_to_data_uri(full_path)
+                    auth.store_temp_avatar(uname, data_uri)
+                    try:
+                        os.remove(full_path)
+                    except OSError:
+                        pass
+            except Exception:
+                pass
+
+        FletUpload.handle = _wrapped_handle
+        FletUpload._ug_hooked = True
+    except Exception:
+        pass
+
+
+_install_upload_hook()
 
 PRESET_AVATARS = [
     ("🐍 Python", "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg"),
@@ -108,39 +158,106 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
     url_tf.on_change = on_url_change
 
+    def _try_consume_upload() -> bool:
+        target_name = state.get("pending_upload")
+        if not target_name:
+            return False
+        data_uri = auth.pop_temp_avatar(user["username"])
+        if not data_uri:
+            dest_path = os.path.join(UPLOAD_DIR, target_name)
+            if os.path.isfile(dest_path) and os.path.getsize(dest_path) > 0:
+                try:
+                    data_uri = _encode_file_to_data_uri(dest_path)
+                    os.remove(dest_path)
+                except OSError:
+                    data_uri = ""
+        if data_uri:
+            state["pending_upload"] = None
+            url_tf.value = ""
+            refresh_preview(data_uri)
+            return True
+        return False
+
+    def on_upload(e: ft.FilePickerUploadEvent):
+        if getattr(e, "error", None):
+            state["pending_upload"] = None
+            msg.value = "Gagal membaca file foto."
+            page.update()
+            return
+        prog = getattr(e, "progress", None)
+        if prog is not None and prog >= 1.0:
+            for _ in range(25):
+                if _try_consume_upload():
+                    return
+                time.sleep(0.05)
+
     def on_file_picked(e: ft.FilePickerResultEvent):
         if not e.files:
             return
         f = e.files[0]
-        fpath = getattr(f, "path", None)
-        if not fpath or not os.path.isfile(fpath):
-            msg.value = "Di browser web, silakan tempel URL gambar atau pilih avatar di bawah."
+        fsize = getattr(f, "size", 0) or 0
+        if fsize > 3_000_000:
+            msg.value = "Ukuran foto terlalu besar (maksimal 1 MB)."
             page.update()
             return
-        try:
-            if os.path.getsize(fpath) > 1_000_000:
-                msg.value = "Ukuran foto terlalu besar (maksimal 1 MB)."
+        fpath = getattr(f, "path", None)
+        if fpath and os.path.isfile(fpath):
+            try:
+                if os.path.getsize(fpath) > 3_000_000:
+                    msg.value = "Ukuran foto terlalu besar (maksimal 1 MB)."
+                    page.update()
+                    return
+                data_uri = _encode_file_to_data_uri(fpath)
+                url_tf.value = ""
+                refresh_preview(data_uri)
+            except OSError:
+                msg.value = "Gagal membaca file foto."
                 page.update()
-                return
-            with open(fpath, "rb") as fh:
-                raw = fh.read()
-            ext = os.path.splitext(fpath)[1].lower().lstrip(".") or "png"
-            mime = "jpeg" if ext == "jpg" else ext
-            data_uri = f"data:image/{mime};base64,{base64.b64encode(raw).decode('ascii')}"
-            url_tf.value = ""
-            refresh_preview(data_uri)
-        except OSError:
-            msg.value = "Gagal membaca file foto."
+            return
+
+        # Mode Browser Web (f.path bernilai None): unggah via endpoint upload Flet
+        try:
+            auth.pop_temp_avatar(user["username"])
+            ext = os.path.splitext(getattr(f, "name", "") or "avatar.png")[1].lower().lstrip(".") or "png"
+            target_name = f"avatar__{user['username']}.{ext}"
+            dest_path = os.path.join(UPLOAD_DIR, target_name)
+            if os.path.isfile(dest_path):
+                try:
+                    os.remove(dest_path)
+                except OSError:
+                    pass
+            state["pending_upload"] = target_name
+            upload_url = page.get_upload_url(target_name, 120)
+            try:
+                picker.upload([ft.FilePickerUploadFile(f.name, upload_url=upload_url)])
+            except AssertionError:
+                pass
+
+            def _watch():
+                for _ in range(80):
+                    if state.get("pending_upload") != target_name:
+                        return
+                    if _try_consume_upload():
+                        return
+                    time.sleep(0.08)
+
+            threading.Thread(target=_watch, daemon=True).start()
+        except Exception:
+            state["pending_upload"] = None
+            msg.value = "Di browser web, silakan tempel URL gambar atau pilih avatar di bawah."
             page.update()
 
+    page._ug_avatar_on_result = on_file_picked
+    page._ug_avatar_on_upload = on_upload
     picker = getattr(page, "_ug_avatar_picker", None)
     if picker is None:
-        picker = ft.FilePicker(on_result=on_file_picked)
+        picker = ft.FilePicker(
+            on_result=lambda e: getattr(page, "_ug_avatar_on_result", lambda _: None)(e),
+            on_upload=lambda e: getattr(page, "_ug_avatar_on_upload", lambda _: None)(e),
+        )
         page._ug_avatar_picker = picker
-        if picker not in page.overlay:
-            page.overlay.append(picker)
-    else:
-        picker.on_result = on_file_picked
+    if picker not in page.overlay:
+        page.overlay.append(picker)
 
     def pick_file(e):
         try:
@@ -161,6 +278,11 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
     ]
 
     def save(e=None):
+        if state.get("pending_upload"):
+            for _ in range(35):
+                if _try_consume_upload():
+                    break
+                time.sleep(0.05)
         candidate = (url_tf.value or "").strip() or state["avatar"]
         ok, text = auth.set_avatar(user["username"], candidate)
         if ok:
