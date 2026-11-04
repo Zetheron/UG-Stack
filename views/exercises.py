@@ -9,7 +9,7 @@ from content.languages import LANGS
 from content.quizzes import PASS_PERCENT
 from services import quiz as quiz_service
 from services import quiz_admin
-from views.tryit import create_simulator_cards
+from services.i18n import translate
 
 QUIZ_DURATION_MINUTES = 10
 QUIZ_DURATION_SECONDS = QUIZ_DURATION_MINUTES * 60
@@ -71,7 +71,6 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
         if not user
         else f"Skor Anda tersimpan otomatis, {user['username']}."
     )
-    sim_cards = create_simulator_cards("Python", ui_lang=ui_lang)
     return ft.Column(
         [
             page_banner("Latihan dan Quiz", "Uji pemahaman Anda setelah mempelajari tiap bahasa.", mobile),
@@ -81,8 +80,6 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
                     [
                         ft.Text(note, size=14, color=ft.colors.ON_SURFACE_VARIANT),
                         ft.ResponsiveRow(cards, spacing=16, run_spacing=16),
-                        ft.Divider(height=24, color=ft.colors.with_opacity(0.15, ft.colors.OUTLINE)),
-                        ft.ResponsiveRow(sim_cards, spacing=16, run_spacing=16),
                     ],
                     spacing=16,
                 ),
@@ -151,7 +148,8 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
         state["remaining"] = rem_sec
         mm, ss = divmod(rem_sec, 60)
         t_color = GREEN if rem_sec > 120 else ("#F59E0B" if rem_sec > 60 else "#E53935")
-        timer_text.value = f"⏱️ Sisa waktu: {mm:02d}:{ss:02d}"
+        cur_lang = getattr(page, "_ug_lang", ui_lang)
+        timer_text.value = translate(f"⏱️ Sisa waktu: {mm:02d}:{ss:02d}", cur_lang)
         timer_text.color = t_color
         timer_bar.value = rem_sec / QUIZ_DURATION_SECONDS
         timer_bar.color = t_color
@@ -238,7 +236,10 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
                         pass
                     return
                 try:
-                    page.update()
+                    if getattr(timer_card, "page", None):
+                        timer_card.update()
+                    else:
+                        page.update()
                 except Exception:
                     return
 

@@ -116,8 +116,9 @@ def _close(page):
 # ------------------------------------------------------------------ ringkasan sistem (admin)
 def _tab_overview(page, user, mobile, refresh):
     st = reports.system_stats(user)
-    mhs_rows = reports.progress_overview(user, role_filter="mahasiswa")
-    dsn_rows = reports.progress_overview(user, role_filter="dosen")
+    all_rows = reports.progress_overview(user)
+    mhs_rows = [r for r in all_rows if r["role"] == "mahasiswa"]
+    dsn_rows = [r for r in all_rows if r["role"] == "dosen"]
     avg_mhs = sum(r["percent"] for r in mhs_rows) / len(mhs_rows) if mhs_rows else 0.0
     avg_dsn = sum(r["percent"] for r in dsn_rows) / len(dsn_rows) if dsn_rows else 0.0
 
@@ -190,28 +191,38 @@ def _tab_report(page, user, mobile, refresh):
     list_box = ft.Column(spacing=10)
     summary_row = ft.ResponsiveRow(spacing=12, run_spacing=12)
     count = ft.Text("", size=13, color=TEXT_MUTED)
+    base_rows = reports.progress_overview(user)
+    all_mhs = [r for r in base_rows if r["role"] == "mahasiswa"]
+    all_dsn = [r for r in base_rows if r["role"] == "dosen"]
+    avg_mhs = sum(r["percent"] for r in all_mhs) / len(all_mhs) if all_mhs else 0.0
+    avg_dsn = sum(r["percent"] for r in all_dsn) / len(all_dsn) if all_dsn else 0.0
+    summary_row.controls = [
+        glass_card(ft.Column([
+            ft.Text("🎓 Ringkasan Progres Mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
+            ft.Text(f"{len(all_mhs)} mahasiswa  •  rata-rata progres {avg_mhs:.0f}%", size=13, color=TEXT_MUTED),
+            ft.ProgressBar(value=avg_mhs / 100, color="#10B981", bgcolor=BORDER_SUBTLE, height=8),
+        ], spacing=6), col={"xs": 12, "md": 6}, padding=16),
+        glass_card(ft.Column([
+            ft.Text("👨‍🏫 Ringkasan Progres Dosen", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
+            ft.Text(f"{len(all_dsn)} dosen  •  rata-rata progres {avg_dsn:.0f}%", size=13, color=TEXT_MUTED),
+            ft.ProgressBar(value=avg_dsn / 100, color="#F59E0B", bgcolor=BORDER_SUBTLE, height=8),
+        ], spacing=6), col={"xs": 12, "md": 6}, padding=16),
+    ]
 
     def load(update=True):
-        all_mhs = reports.progress_overview(user, role_filter="mahasiswa")
-        all_dsn = reports.progress_overview(user, role_filter="dosen")
-        avg_mhs = sum(r["percent"] for r in all_mhs) / len(all_mhs) if all_mhs else 0.0
-        avg_dsn = sum(r["percent"] for r in all_dsn) / len(all_dsn) if all_dsn else 0.0
-        summary_row.controls = [
-            glass_card(ft.Column([
-                ft.Text("🎓 Ringkasan Progres Mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
-                ft.Text(f"{len(all_mhs)} mahasiswa  •  rata-rata progres {avg_mhs:.0f}%", size=13, color=TEXT_MUTED),
-                ft.ProgressBar(value=avg_mhs / 100, color="#10B981", bgcolor=BORDER_SUBTLE, height=8),
-            ], spacing=6), col={"xs": 12, "md": 6}, padding=16),
-            glass_card(ft.Column([
-                ft.Text("👨‍🏫 Ringkasan Progres Dosen", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
-                ft.Text(f"{len(all_dsn)} dosen  •  rata-rata progres {avg_dsn:.0f}%", size=13, color=TEXT_MUTED),
-                ft.ProgressBar(value=avg_dsn / 100, color="#F59E0B", bgcolor=BORDER_SUBTLE, height=8),
-            ], spacing=6), col={"xs": 12, "md": 6}, padding=16),
-        ]
-
-        rows = reports.progress_overview(user, st["kw"], st["sort"], st["desc"], st["role"])
+        kw = (st["kw"] or "").strip().lower()
+        rf = (st["role"] or "semua").strip().lower()
+        filtered = []
+        for r in base_rows:
+            if rf in ("mahasiswa", "dosen") and r["role"] != rf:
+                continue
+            if kw and kw not in r["username"].lower() and kw not in (r.get("npm") or "").lower() and kw not in r["role"].lower():
+                continue
+            filtered.append(r)
+        sort_fn = reports.SORT_KEYS.get(st["sort"], reports.SORT_KEYS["persen"])
+        rows = sorted(filtered, key=sort_fn, reverse=st["desc"])
         cards = []
-        for r in rows:
+        for r in rows[:50]:
             is_dsn = r["role"] == "dosen"
             role_badge = chip("DOSEN", "#DBEAFE") if is_dsn else chip("MAHASISWA", "#FFF4A3")
             badges = [

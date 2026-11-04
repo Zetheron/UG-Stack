@@ -1,18 +1,18 @@
 import flet as ft
 
-LOGO_URLS = {
-    "HTML": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg",
-    "CSS": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg",
-    "JavaScript": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg",
-    "Python": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg",
-    "SQL": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sqldeveloper/sqldeveloper-original.svg",
-    "PHP": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg",
-    "jQuery": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jquery/jquery-original.svg",
-    "Java": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg",
-    "C++": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg",
-    "C#": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/csharp/csharp-original.svg",
-    "React": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg",
-    "MySQL": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg",
+COURSE_ICONS = {
+    "HTML": "🌐",
+    "CSS": "🎨",
+    "JavaScript": "⚡",
+    "Python": "🐍",
+    "SQL": "🗄️",
+    "PHP": "🐘",
+    "jQuery": "🧩",
+    "Java": "☕",
+    "C++": "⚙️",
+    "C#": "🎯",
+    "React": "⚛️",
+    "MySQL": "🐬",
 }
 
 COURSES = [
@@ -32,11 +32,11 @@ COURSES = [
 
 
 def create_course_card(title, desc, color_bg, on_select_course=None):
-    logo_src = LOGO_URLS.get(title, "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/code/code-original.svg")
+    icon_char = COURSE_ICONS.get(title, "💻")
 
     return ft.Container(
         bgcolor=ft.colors.SURFACE,
-        padding=22,
+        padding=20,
         border_radius=12,
         border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
         col={"xs": 12, "sm": 6, "md": 4, "lg": 3},
@@ -47,12 +47,12 @@ def create_course_card(title, desc, color_bg, on_select_course=None):
             spacing=8,
             controls=[
                 ft.Container(
-                    width=56,
-                    height=56,
+                    width=52,
+                    height=52,
                     bgcolor=color_bg,
                     border_radius=12,
                     alignment=ft.alignment.center,
-                    content=ft.Image(src=logo_src, width=34, height=34, fit=ft.ImageFit.CONTAIN),
+                    content=ft.Text(icon_char, size=26),
                 ),
                 ft.Text(title, size=20, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE, text_align=ft.TextAlign.CENTER),
                 ft.Container(

@@ -15,7 +15,7 @@ import urllib.request
 from . import storage
 
 USER_AGENT = "UG-Stack/1.0 (student learning project)"
-TIMEOUT = 6
+TIMEOUT = 3
 CACHE_TTL = 24 * 3600
 
 

@@ -33,7 +33,11 @@ def get_references_view(page: ft.Page, lang: dict, mobile: bool, on_lang):
 
     def on_filter(e):
         table.controls = build_rows(e.control.value)
-        page.update()
+        translate_tree(table, getattr(page, "_ug_lang", "id"))
+        if getattr(table, "page", None):
+            table.update()
+        else:
+            page.update()
 
     filter_box = ft.TextField(hint_text=f"Saring ringkasan sintaks {lang['name']}...", prefix_icon=ft.icons.FILTER_LIST,
                               on_change=on_filter, color=ft.colors.ON_SURFACE, border_radius=8)

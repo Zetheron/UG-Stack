@@ -29,12 +29,26 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
                        on_change_password=None, on_nav=None, on_open_lang=None, on_quiz=None):
     admin = can_manage_content(user)      # admin dan dosen mengelola modul; mahasiswa belajar
     f = {"keyword": "", "bahasa": "Semua", "sort_by": "judul", "desc": False}
+    cache_data = {"modules": [], "done_ids": []}
 
     list_area = ft.ResponsiveRow(spacing=16, run_spacing=16)
     kpi_area = ft.ResponsiveRow(spacing=16, run_spacing=16)
     analytics_area = ft.ResponsiveRow(spacing=16, run_spacing=16)
     summary = ft.Column(spacing=8)
     count_text = ft.Text("", size=13, color=TEXT_MUTED)
+
+    def refresh_list_only(update=True):
+        all_modules = cache_data["modules"]
+        done_ids = cache_data["done_ids"]
+        shown = svc.search_modules(all_modules, f["keyword"], f["bahasa"], f["sort_by"], f["desc"])
+        list_area.controls = [module_card(m, m["id"] in done_ids) for m in shown]
+        if not shown:
+            list_area.controls = [ft.Container(
+                col=12, padding=20, alignment=ft.alignment.center,
+                content=ft.Text("Tidak ada modul yang cocok dengan pencarian.", color=TEXT_MUTED))]
+        count_text.value = f"Menampilkan {len(shown)} dari {len(all_modules)} modul"
+        if update:
+            page.update()
 
     # ---------------------------------------------------------------- data -> tampilan
     def refresh(update=True):
@@ -49,6 +63,8 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
             page.show_snack(str(e))
             all_modules, ids, done_ids, students, ranking, lecturers = [], [], [], [], [], []
 
+        cache_data["modules"] = all_modules
+        cache_data["done_ids"] = done_ids
         shown = svc.search_modules(all_modules, f["keyword"], f["bahasa"], f["sort_by"], f["desc"])
 
         list_area.controls = [module_card(m, m["id"] in done_ids) for m in shown]
@@ -241,20 +257,20 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
     # ---------------------------------------------------------------- filter / sort
     def on_search(e):
         f["keyword"] = e.control.value or ""
-        refresh()
+        refresh_list_only()
 
     def on_bahasa(e):
         f["bahasa"] = e.control.value or "Semua"
-        refresh()
+        refresh_list_only()
 
     def on_sort(e):
         f["sort_by"] = e.control.value or "judul"
-        refresh()
+        refresh_list_only()
 
     def on_order(e):
         f["desc"] = not f["desc"]
         order_btn.icon = ft.icons.ARROW_DOWNWARD if f["desc"] else ft.icons.ARROW_UPWARD
-        refresh()
+        refresh_list_only()
 
     search = ft.TextField(hint_text="Cari modul...", prefix_icon=ft.icons.SEARCH, on_change=on_search,
                           bgcolor=BG_CARD, color=TEXT_PRIMARY, border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 12, "md": 4})

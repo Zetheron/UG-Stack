@@ -60,7 +60,6 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None, 
         max_lines=14,
         text_style=ft.TextStyle(font_family="monospace", size=13),
         border_radius=8,
-        on_change=run_editor,
     )
     lang_dd = ft.Dropdown(
         label="Bahasa",
@@ -127,8 +126,8 @@ def create_simulator_cards(lang_name: str = "Python", initial_code: str = None, 
             pass
 
     algo_dd.on_change = run_algo
-    arr_tf.on_change = run_algo
-    target_tf.on_change = run_algo
+    arr_tf.on_submit = run_algo
+    target_tf.on_submit = run_algo
     run_algo()
 
     editor_card = card(

@@ -287,7 +287,7 @@ def list_names(prefix: str = "") -> list:
 
 
 # --- IN-MEMORY CACHE UNTUK VERCEL + NEON (ANTI-LAG PINDAH TAB) ---
-_MEM_CACHE: dict[str, tuple[float, str]] = {}
+_MEM_CACHE: dict[str, tuple[float, object]] = {}
 _orig_load_json = load_json
 _orig_peek_json = peek_json
 _orig_save_json = save_json
@@ -301,7 +301,7 @@ def _cache_ttl(name: str) -> float:
         return 0.0
     if not (_os.environ.get("VERCEL") or _os.environ.get("DATABASE_URL")):
         return 0.0
-    return 300.0 if name.startswith("cache_") else 30.0
+    return 600.0 if name.startswith("cache_") else 30.0
 
 
 def reset_backend() -> None:
@@ -317,14 +317,17 @@ def set_backend(backend) -> None:
 def peek_json(name: str):
     ttl = _cache_ttl(name)
     now = _time.time()
-    if ttl > 0 and name in _MEM_CACHE:
-        ts, raw = _MEM_CACHE[name]
-        if now - ts < ttl:
-            return json.loads(raw)
+    if ttl > 0:
+        if name in _MEM_CACHE:
+            ts, cached_obj = _MEM_CACHE[name]
+            if now - ts < ttl:
+                return copy.deepcopy(cached_obj)
+        if name.startswith("cache_"):
+            return None
     res = _orig_peek_json(name)
     if ttl > 0 and res is not None:
         try:
-            _MEM_CACHE[name] = (now, json.dumps(res, ensure_ascii=False))
+            _MEM_CACHE[name] = (now, copy.deepcopy(res))
         except Exception:
             pass
     return res
@@ -334,26 +337,30 @@ def load_json(name: str, default):
     ttl = _cache_ttl(name)
     now = _time.time()
     if ttl > 0 and name in _MEM_CACHE:
-        ts, raw = _MEM_CACHE[name]
+        ts, cached_obj = _MEM_CACHE[name]
         if now - ts < ttl:
             try:
-                return json.loads(raw)
+                return copy.deepcopy(cached_obj)
             except Exception:
                 pass
     res = _orig_load_json(name, default)
     if ttl > 0:
         try:
-            _MEM_CACHE[name] = (now, json.dumps(res, ensure_ascii=False))
+            _MEM_CACHE[name] = (now, copy.deepcopy(res))
         except Exception:
             pass
     return res
 
 
 def save_json(name: str, data) -> None:
+    ttl = _cache_ttl(name)
+    if ttl > 0 and name.startswith("cache_"):
+        _MEM_CACHE[name] = (_time.time(), copy.deepcopy(data))
+        return
     _orig_save_json(name, data)
-    if _cache_ttl(name) > 0:
+    if ttl > 0:
         try:
-            _MEM_CACHE[name] = (_time.time(), json.dumps(data, ensure_ascii=False))
+            _MEM_CACHE[name] = (_time.time(), copy.deepcopy(data))
         except Exception:
             _MEM_CACHE.pop(name, None)
     else:

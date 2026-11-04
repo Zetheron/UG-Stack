@@ -12,7 +12,8 @@ ACCENT_ORANGE = "#F59E0B"
 ACCENT_GREEN = "#04AA6D"
 
 
-def glass_card(content: ft.Control, col=None, padding=20, bg=BG_CARD, border_color=BORDER_SUBTLE, radius=16) -> ft.Container:
+def glass_card(content: ft.Control, col=None, padding=18, bg=BG_CARD, border_color=BORDER_SUBTLE, radius=12) -> ft.Container:
+    """Kartu minimalis ringan tanpa blur shadow berat agar render web tetap cepat dan bebas lag."""
     return ft.Container(
         content=content,
         col=col,
@@ -20,45 +21,33 @@ def glass_card(content: ft.Control, col=None, padding=20, bg=BG_CARD, border_col
         padding=padding,
         border_radius=radius,
         border=ft.border.all(1, border_color),
-        shadow=ft.BoxShadow(
-            spread_radius=0,
-            blur_radius=18,
-            color=ft.colors.with_opacity(0.28, "#000000"),
-            offset=ft.Offset(0, 6),
-        ),
     )
 
 
 def kpi_glow_card(label: str, value_str: str, icon_name: str, glow_color: str, sub_label: str = "", col=None) -> ft.Container:
-    """Kartu KPI bergaya ModyLearn dengan nilai besar di kiri dan kotak ikon berpendar (glow) di kanan."""
+    """Kartu KPI minimalis ringan dengan nilai besar di kiri dan kotak ikon aksen di kanan."""
     icon_box = ft.Container(
-        width=48,
-        height=48,
-        border_radius=14,
-        bgcolor=ft.colors.with_opacity(0.16, glow_color),
-        border=ft.border.all(1, ft.colors.with_opacity(0.45, glow_color)),
+        width=44,
+        height=44,
+        border_radius=10,
+        bgcolor=ft.colors.with_opacity(0.14, glow_color),
+        border=ft.border.all(1, ft.colors.with_opacity(0.35, glow_color)),
         alignment=ft.alignment.center,
-        shadow=ft.BoxShadow(
-            spread_radius=2,
-            blur_radius=24,
-            color=ft.colors.with_opacity(0.38, glow_color),
-            offset=ft.Offset(0, 0),
-        ),
-        content=ft.Icon(icon_name, color=glow_color, size=22),
+        content=ft.Icon(icon_name, color=glow_color, size=20),
     )
     left_items = [
         ft.Text(label, size=11, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
-        ft.Text(str(value_str), size=28, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+        ft.Text(str(value_str), size=24, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
     ]
     if sub_label:
         left_items.append(ft.Text(sub_label, size=11, color=TEXT_MUTED))
 
     return glass_card(
         col=col or {"xs": 12, "sm": 6, "md": 4},
-        padding=22,
+        padding=18,
         content=ft.Row(
             [
-                ft.Column(left_items, spacing=4, expand=True),
+                ft.Column(left_items, spacing=3, expand=True),
                 icon_box,
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -109,7 +98,7 @@ def top_bar(title: str, subtitle: str, right_controls: list = None) -> ft.Contai
 
 
 def activity_trend_card(extra_bottom: ft.Control = None, col=None) -> ft.Container:
-    """Kartu grafik tren aktivitas bulanan bergaya kurva/batang berpendar."""
+    """Kartu tren aktivitas bulanan ringan tanpa efek shadow/gradient berat."""
     points = [
         ("JAN", 0.28, "#8B5CF6"),
         ("MAR", 0.42, "#A855F7"),
@@ -120,27 +109,15 @@ def activity_trend_card(extra_bottom: ft.Control = None, col=None) -> ft.Contain
     ]
     bars = []
     for month, ratio, color in points:
-        bar_h = int(24 + ratio * 95)
+        bar_h = int(18 + ratio * 72)
         bars.append(
             ft.Column(
                 [
                     ft.Container(
-                        width=12,
-                        height=12,
-                        border_radius=6,
-                        bgcolor=BG_CARD,
-                        border=ft.border.all(2.5, color),
-                        shadow=ft.BoxShadow(blur_radius=10, spread_radius=1, color=ft.colors.with_opacity(0.6, color)),
-                    ),
-                    ft.Container(
-                        width=22,
+                        width=20,
                         height=bar_h,
-                        border_radius=ft.border_radius.only(top_left=6, top_right=6, bottom_left=2, bottom_right=2),
-                        gradient=ft.LinearGradient(
-                            begin=ft.alignment.top_center,
-                            end=ft.alignment.bottom_center,
-                            colors=[ft.colors.with_opacity(0.55, color), ft.colors.with_opacity(0.06, color)],
-                        ),
+                        border_radius=4,
+                        bgcolor=color,
                     ),
                     ft.Text(month, size=10, weight=ft.FontWeight.BOLD, color=TEXT_MUTED),
                 ],
@@ -152,8 +129,8 @@ def activity_trend_card(extra_bottom: ft.Control = None, col=None) -> ft.Contain
         )
 
     chart_area = ft.Container(
-        height=170,
-        padding=ft.padding.only(top=12, left=8, right=8, bottom=4),
+        height=120,
+        padding=ft.padding.only(top=8, left=8, right=8, bottom=4),
         border=ft.border.only(bottom=ft.BorderSide(1, BORDER_SUBTLE)),
         content=ft.Row(bars, alignment=ft.MainAxisAlignment.SPACE_AROUND, vertical_alignment=ft.CrossAxisAlignment.END),
     )
@@ -161,8 +138,8 @@ def activity_trend_card(extra_bottom: ft.Control = None, col=None) -> ft.Contain
     badge = ft.Container(
         bgcolor="#271B18",
         border=ft.border.all(1, "#F59E0B"),
-        border_radius=18,
-        padding=ft.padding.symmetric(horizontal=12, vertical=5),
+        border_radius=12,
+        padding=ft.padding.symmetric(horizontal=10, vertical=4),
         content=ft.Text("📅 ANALITIK 2026", size=10, weight=ft.FontWeight.BOLD, color="#FBBF24"),
     )
 
@@ -171,7 +148,7 @@ def activity_trend_card(extra_bottom: ft.Control = None, col=None) -> ft.Contain
             [
                 ft.Column(
                     [
-                        ft.Text("Tren Aktivitas & Progres", size=17, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                        ft.Text("Tren Aktivitas & Progres", size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
                         ft.Text("RINGKASAN AKTIVITAS BULANAN", size=10, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
                     ],
                     spacing=2,
@@ -189,90 +166,79 @@ def activity_trend_card(extra_bottom: ft.Control = None, col=None) -> ft.Contain
 
     return glass_card(
         col=col or {"xs": 12, "lg": 8},
-        padding=22,
-        content=ft.Column(body_items, spacing=14),
+        padding=18,
+        content=ft.Column(body_items, spacing=12),
     )
 
 
 def categories_donut_card(total_modules: int, col=None) -> ft.Container:
-    """Kartu cincin donat kategori bahasa/modul di sisi kanan seperti desain referensi."""
+    """Kartu distribusi kategori modul ringan berbasis progress bar datar (tanpa tumpukan ProgressRing)."""
     cats = [
         ("Pengembangan Web", "38%", "#F97316", 0.38),
         ("Data & Basis Data", "25%", "#8B5CF6", 0.25),
         ("Umum", "22%", "#10B981", 0.22),
         ("Sistem", "15%", "#3B82F6", 0.15),
     ]
-    ring_stack = ft.Stack(
-        [
-            ft.ProgressRing(value=1.0, width=148, height=148, stroke_width=16, color="#8B5CF6", bgcolor="#231E3D"),
-            ft.ProgressRing(value=0.68, width=148, height=148, stroke_width=16, color="#F97316", bgcolor=ft.colors.TRANSPARENT),
-            ft.ProgressRing(value=0.32, width=148, height=148, stroke_width=16, color="#10B981", bgcolor=ft.colors.TRANSPARENT),
-            ft.Container(
-                width=148,
-                height=148,
-                alignment=ft.alignment.center,
-                content=ft.Column(
-                    [
-                        ft.Text(str(total_modules), size=26, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-                        ft.Text("TOTAL MODUL", size=9, weight=ft.FontWeight.BOLD, color=TEXT_MUTED),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=0,
-                ),
-            ),
-        ],
-        width=148,
-        height=148,
+    total_banner = ft.Container(
+        padding=ft.padding.symmetric(vertical=10, horizontal=14),
+        bgcolor=BG_CARD_ALT,
+        border_radius=10,
+        border=ft.border.all(1, BORDER_SUBTLE),
+        content=ft.Row(
+            [
+                ft.Text("TOTAL MODUL", size=11, weight=ft.FontWeight.BOLD, color=TEXT_MUTED),
+                ft.Text(str(total_modules), size=22, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
     )
 
     legend_rows = []
-    for label, pct_str, color, _ in cats:
+    for label, pct_str, color, ratio in cats:
         legend_rows.append(
             ft.Container(
-                padding=ft.padding.symmetric(vertical=6, horizontal=10),
+                padding=ft.padding.symmetric(vertical=7, horizontal=10),
                 bgcolor=BG_CARD_ALT,
                 border_radius=8,
-                content=ft.Row(
+                content=ft.Column(
                     [
                         ft.Row(
                             [
-                                ft.Container(width=10, height=10, border_radius=5, bgcolor=color),
-                                ft.Text(label, size=12, color=TEXT_MUTED),
+                                ft.Row(
+                                    [
+                                        ft.Container(width=8, height=8, border_radius=4, bgcolor=color),
+                                        ft.Text(label, size=12, color=TEXT_MUTED),
+                                    ],
+                                    spacing=8,
+                                ),
+                                ft.Text(pct_str, size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
                             ],
-                            spacing=8,
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         ),
-                        ft.Text(pct_str, size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                        ft.ProgressBar(value=ratio, color=color, bgcolor=BORDER_SUBTLE, height=5),
                     ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    spacing=5,
                 ),
             )
         )
 
     return glass_card(
         col=col or {"xs": 12, "lg": 4},
-        padding=22,
+        padding=18,
         content=ft.Column(
             [
                 ft.Row(
                     [
-                        ft.Text("Kategori Modul", size=17, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-                        ft.Container(
-                            width=32,
-                            height=32,
-                            border_radius=8,
-                            bgcolor=BG_CARD_ALT,
-                            border=ft.border.all(1, BORDER_SUBTLE),
-                            alignment=ft.alignment.center,
-                            content=ft.Icon(ft.icons.GRID_VIEW_ROUNDED, size=16, color=TEXT_MUTED),
-                        ),
+                        ft.Text("Kategori Modul", size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                        ft.Icon(ft.icons.GRID_VIEW_ROUNDED, size=16, color=TEXT_MUTED),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Container(content=ring_stack, alignment=ft.alignment.center, padding=ft.padding.symmetric(vertical=8)),
+                total_banner,
                 ft.Column(legend_rows, spacing=6),
             ],
-            spacing=12,
+            spacing=10,
         ),
     )
 
@@ -318,14 +284,10 @@ def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actio
         content=ft.Row(
             [
                 ft.Container(
-                    width=40,
-                    height=40,
-                    border_radius=12,
-                    gradient=ft.LinearGradient(
-                        begin=ft.alignment.top_left,
-                        end=ft.alignment.bottom_right,
-                        colors=["#A855F7", "#F97316"],
-                    ),
+                    width=38,
+                    height=38,
+                    border_radius=10,
+                    bgcolor="#8B5CF6",
                     alignment=ft.alignment.center,
                     content=ft.Icon(ft.icons.AUTO_AWESOME, color=ft.colors.WHITE, size=20),
                 ),

@@ -20,9 +20,17 @@ def _set(obj, attr: str, lang: str) -> None:
     try:
         value = getattr(obj, attr, None)
         if isinstance(value, str) and value:
+            cache = getattr(obj, "_ug_tr_cache", None)
+            if cache is not None and cache.get(attr) == (lang, value):
+                return
             new = translate(value, lang)
             if new != value:
                 setattr(obj, attr, new)
+                value = new
+            if cache is None:
+                cache = {}
+                setattr(obj, "_ug_tr_cache", cache)
+            cache[attr] = (lang, value)
     except Exception:
         pass                                      # satu atribut yang gagal tidak boleh menghentikan tampilan
 
