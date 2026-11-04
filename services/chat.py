@@ -1,4 +1,4 @@
-"""Layanan ruang diskusi (Chat) dan Bot Asisten UG-Stack."""
+"""Layanan Customer Service (Live Support Chat) dan Bot Asisten CS UG-Stack."""
 from datetime import datetime
 from services import audit, roles, storage
 
@@ -7,8 +7,8 @@ CHANNELS = ("umum", "tanya-dosen", "python-web", "algoritma")
 
 SEED_MESSAGES = [
     {
-        "id": 1, "channel": "umum", "username": "admin", "npm": "STAFF", "role": "admin",
-        "text": "Selamat datang di Ruang Diskusi UG-Stack! Gunakan kanal #tanya-dosen atau ketik @bot untuk bertanya materi.",
+        "id": 1, "channel": "umum", "username": "bot_ugstack", "npm": "CS-24/7", "role": "admin",
+        "text": "Halo! Selamat datang di Layanan Customer Service UG-Stack. Pilih topik bantuan cepat di bawah atau tuliskan kendala Anda.",
         "time": "2026-10-29 08:00",
     },
     {
@@ -24,7 +24,11 @@ BOT_KB = [
     (("insertion sort",), "Insertion Sort menyisipkan elemen ke posisi tepat satu per satu. Cepat untuk data kecil O(n), namun rata-rata O(n^2)."),
     (("python", "list", "dict"), "Di Python, list [1, 2, 3] menyimpan data urut, sedangkan dict {'kunci': 'nilai'} menyimpan pasangan key-value."),
     (("sql", "select", "join"), "Gunakan SELECT kolom FROM tabel WHERE kondisi; dan JOIN untuk merelasikan dua tabel."),
-    (("npm", "login", "sinkron"), "Anda dapat login menggunakan Username maupun NPM mahasiswa yang sudah ditautkan ke akun Anda."),
+    (("npm", "login", "sinkron", "nama lengkap", "daftar"), "Halo! Untuk login atau daftar sebagai mahasiswa, wajib mengisi Nama Lengkap, NPM (4-20 karakter), dan Password Anda di halaman Login/Daftar."),
+    (("sertifikat", "lulus", "verifikasi"), "Untuk mendapatkan Sertifikat Resmi UG-Stack, kerjakan Quiz di menu Latihan dan raih skor minimal 70% dalam waktu 10 menit."),
+    (("waktu", "10 menit", "timer", "quiz"), "Setiap Quiz memiliki batas waktu pengerjaan 10 menit (hitung mundur otomatis). Jika waktu habis, jawaban Anda dinilai otomatis."),
+    (("foto", "avatar", "profil", "upload"), "Anda dapat mengubah foto profil melalui tombol '📷 Foto Profil' di sidebar bawah Dasbor (unggah file foto, URL gambar, atau pilih avatar cepat)."),
+    (("password", "sandi", "lupa", "terkunci"), "Jika lupa password atau akun terkunci, silakan hubungi Admin melalui layanan CS ini dengan menyebutkan Nama Lengkap dan NPM Anda."),
 ]
 
 
@@ -49,16 +53,18 @@ def send_message(user: dict | None, channel: str, text: str) -> tuple[bool, str]
         nid = max((m.get("id", 0) for m in msgs), default=0) + 1
         msgs.append({
             "id": nid, "channel": ch, "username": user.get("username", "anonim"),
+            "full_name": user.get("full_name", ""),
             "npm": user.get("npm", ""), "role": user.get("role", "mahasiswa"),
             "text": clean, "time": now_str,
         })
         low = clean.lower()
         ans = next((a for keys, a in BOT_KB if any(k in low for k in keys)), None)
-        if ans or "@bot" in low:
-            reply = ans or "Pertanyaan menarik! Silakan jelajahi materi di menu Tutorial atau coba kodenya di menu Simulasi."
+        is_student = not roles.is_staff(user)
+        if ans or "@bot" in low or (is_student and ch == "umum"):
+            reply = ans or "Terima kasih telah menghubungi Customer Service UG-Stack. Pesan Anda telah diterima dan tim Admin/Dosen akan segera merespons."
             msgs.append({
-                "id": nid + 1, "channel": ch, "username": "bot_ugstack", "npm": "AI",
-                "role": "dosen", "text": reply, "time": now_str,
+                "id": nid + 1, "channel": ch, "username": "bot_ugstack", "npm": "CS-24/7",
+                "role": "admin" if ch == "umum" else "dosen", "text": reply, "time": now_str,
             })
         storage.save_json(CHAT_FILE, msgs[-200:])
     audit.log(user.get("username", "-"), "CHAT_KIRIM", f"#{ch}: {clean[:40]}")

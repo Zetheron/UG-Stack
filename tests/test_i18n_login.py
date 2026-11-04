@@ -90,7 +90,7 @@ class TestTerjemahan(unittest.TestCase):
                    "JAN", "MAR", "JUL", "SEP", "NOV", "UBAH_FOTO", "data:image/{};base64,{}",
                    "avatar__{}.{}", "ugstack-upload-secret-2026",
                    "FLET_SECRET_KEY", "FLET_UPLOAD_DIR", "_FletUpload__upload_dir",
-                   "_ug_avatar_on_result", "_ug_avatar_on_upload", "_ug_quiz_token",
+                   "_ug_avatar_on_result", "_ug_avatar_on_upload", "_ug_quiz_token", "CS-24/7",
                    "🐍 Python", "⚛️ React", "☕ Java", "🟨 JS", "🌐 HTML", "🐬 MySQL",
                    "📋 Cheat sheet", "Mode: {}", "memilih {}, akun {}", "pendaftaran mandiri {}", "percobaan ke-{}",
                    "{} dibuat, {} dilewati", "{} ditambah, {} dilewati", "ADMIN_KODE_GAGAL", "🛡️ Admin",
