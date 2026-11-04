@@ -23,12 +23,13 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
         try:
             all_modules = svc.list_modules()
             ids = [m["id"] for m in all_modules]
-            done_ids = [] if admin else progress.get_done(user["username"])
+            done_ids = progress.get_done(user["username"])
             students = auth.list_students() if admin else []
             ranking = progress.ranking(students, ids) if admin else []
+            lecturers = reports.progress_overview(user, role_filter="dosen") if admin else []
         except StorageError as e:
             page.show_snack(str(e))
-            all_modules, ids, done_ids, students, ranking = [], [], [], [], []
+            all_modules, ids, done_ids, students, ranking, lecturers = [], [], [], [], [], []
 
         shown = svc.search_modules(all_modules, f["keyword"], f["bahasa"], f["sort_by"], f["desc"])
 
@@ -41,9 +42,12 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
 
         if admin:
             avg = sum(r[2] for r in ranking) / len(ranking) if ranking else 0.0
+            avg_dsn = sum(r["percent"] for r in lecturers) / len(lecturers) if lecturers else 0.0
             summary.controls = [
                 ft.Text("Ringkasan", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE),
                 ft.Text(f"{len(all_modules)} modul  •  {len(students)} mahasiswa  •  rata-rata progres {avg:.0f}%",
+                        size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.Text(f"{len(lecturers)} dosen  •  rata-rata progres {avg_dsn:.0f}%",
                         size=13, color=ft.colors.ON_SURFACE_VARIANT),
                 ft.Divider(height=8),
                 ft.Text("Progres mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE),
@@ -53,6 +57,13 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
             for name, n, pct in ranking[:5]:
                 summary.controls.append(ft.Text(f"{name} — {n}/{len(ids)} modul ({pct:.0f}%)", size=13, color=ft.colors.ON_SURFACE_VARIANT))
                 summary.controls.append(ft.ProgressBar(value=pct / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE)))
+            summary.controls.append(ft.Divider(height=8))
+            summary.controls.append(ft.Text("Progres dosen", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE))
+            if not lecturers:
+                summary.controls.append(ft.Text("Belum ada dosen terdaftar.", size=13, color=ft.colors.ON_SURFACE_VARIANT))
+            for r in lecturers[:5]:
+                summary.controls.append(ft.Text(f"{r['username']} — {r['done']}/{r['total']} modul ({r['percent']:.0f}%)", size=13, color=ft.colors.ON_SURFACE_VARIANT))
+                summary.controls.append(ft.ProgressBar(value=r["percent"] / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE)))
         else:
             pct = progress.percent(done_ids, ids)
             n = len([i for i in ids if i in done_ids])
@@ -86,19 +97,21 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
         chip_level = ft.Container(ft.Text(m["level"], size=11, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
                                   bgcolor=LEVEL_COLORS.get(m["level"], "#282A35"),
                                   padding=ft.padding.symmetric(horizontal=8, vertical=3), border_radius=8)
+        done_btn = ft.ElevatedButton(
+            "✓ Selesai" if done else "Tandai selesai",
+            bgcolor="#04AA6D" if done else "#282A35", color=ft.colors.WHITE,
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), elevation=0),
+            on_click=lambda e, mid=m["id"]: toggle(mid))
         if admin:
             actions = ft.Row([
+                *([done_btn] if not is_admin(user) else []),
                 ft.IconButton(ft.icons.EDIT, icon_color="#04AA6D", tooltip="Ubah",
                               on_click=lambda e, mm=m: open_form(mm)),
                 ft.IconButton(ft.icons.DELETE, icon_color="#E53935", tooltip="Hapus",
                               on_click=lambda e, mm=m: confirm_delete(mm)),
-            ])
+            ], wrap=True, spacing=6)
         else:
-            actions = ft.Row([ft.ElevatedButton(
-                "✓ Selesai" if done else "Tandai selesai",
-                bgcolor="#04AA6D" if done else "#282A35", color=ft.colors.WHITE,
-                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), elevation=0),
-                on_click=lambda e, mid=m["id"]: toggle(mid))])
+            actions = ft.Row([done_btn])
         return ft.Container(
             col={"xs": 12, "sm": 6, "md": 4}, bgcolor=ft.colors.SURFACE, padding=20, border_radius=12,
             border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
@@ -114,7 +127,7 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
 
     # ---------------------------------------------------------------- aksi
     def toggle(module_id):
-        if admin:
+        if is_admin(user):
             return
         ok, msg, _ = progress.toggle_done(user["username"], module_id)
         page.show_snack(msg)

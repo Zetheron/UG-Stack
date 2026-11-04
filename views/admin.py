@@ -5,9 +5,9 @@ from content.languages import LANGS
 from services import audit, auth, backup, csv_io, quiz_admin, reports, settings
 from services.roles import ROLES, is_admin
 
-TABS = [("ringkasan", "🖥️ Ringkasan"), ("laporan", "📊 Mahasiswa"), ("pengguna", "👥 Pengguna"), ("akun", "➕ Buat Akun"),
+TABS = [("ringkasan", "🖥️ Ringkasan"), ("laporan", "📊 Progres Mahasiswa & Dosen"), ("pengguna", "👥 Pengguna"), ("akun", "➕ Buat Akun"),
         ("soal", "📝 Soal Quiz"), ("log", "📜 Log Aktivitas"), ("data", "💾 Data (Cadangan/CSV)")]
-DOSEN_TABS = ("laporan", "soal")      # dosen: laporan mahasiswa dan soal quiz (modul dikelola dari Dashboard)
+DOSEN_TABS = ("laporan", "soal")      # dosen: laporan progres dan soal quiz (modul dikelola dari Dashboard)
 
 
 def allowed_tabs(user: dict) -> list:
@@ -25,7 +25,7 @@ def get_admin_view(page: ft.Page, user: dict, tab: str, mobile: bool, on_tab, on
     builders = {"ringkasan": _tab_overview, "laporan": _tab_report, "pengguna": _tab_users, "akun": _tab_accounts, "soal": _tab_questions, "log": _tab_logs, "data": _tab_data}
     body = builders[tab](page, user, mobile, lambda: on_tab(tab))
     title = "Panel Admin" if is_admin(user) else "Panel Dosen"
-    sub = "Pantau sistem; kelola akun, soal quiz, log aktivitas, dan data." if is_admin(user) else "Pantau progres mahasiswa dan kelola soal quiz."
+    sub = "Pantau progres mahasiswa & dosen; kelola akun, soal quiz, log aktivitas, dan data." if is_admin(user) else "Pantau progres mahasiswa & dosen serta kelola soal quiz."
     return ft.Column([
         page_banner(title, sub, mobile),
         ft.Container(padding=pad(mobile), content=ft.Column([
@@ -48,13 +48,20 @@ def _close(page):
 # ------------------------------------------------------------------ ringkasan sistem (admin)
 def _tab_overview(page, user, mobile, refresh):
     st = reports.system_stats(user)
+    mhs_rows = reports.progress_overview(user, role_filter="mahasiswa")
+    dsn_rows = reports.progress_overview(user, role_filter="dosen")
+    avg_mhs = sum(r["percent"] for r in mhs_rows) / len(mhs_rows) if mhs_rows else 0.0
+    avg_dsn = sum(r["percent"] for r in dsn_rows) / len(dsn_rows) if dsn_rows else 0.0
+
     def stat(label, value):
         return card(ft.Column([ft.Text(str(value), size=28, weight=ft.FontWeight.BOLD, color="#04AA6D"),
                                ft.Text(label, size=12, color=ft.colors.ON_SURFACE_VARIANT)], spacing=2), col={"xs": 6, "md": 3})
     cards = [stat("🎓 Mahasiswa", st["users"]["mahasiswa"]), stat("👨‍🏫 Dosen", st["users"]["dosen"]),
              stat("🛡️ Admin", st["users"]["admin"]), stat("📚 Modul", st["modules"]),
              stat("📝 Soal kustom", st["custom_questions"]), stat("🧪 Percobaan quiz", st["quiz_attempts"]),
-             stat("🏅 Sertifikat terbit", st["certificates"])]
+             stat("🏅 Sertifikat terbit", st["certificates"]),
+             stat("📈 Rata-rata Mahasiswa", f"{avg_mhs:.0f}%"),
+             stat("📈 Rata-rata Dosen", f"{avg_dsn:.0f}%")]
     return ft.Column([
         section_heading("Ringkasan sistem"), ft.ResponsiveRow(cards, spacing=12, run_spacing=12),
         card(ft.Column([ft.Text("Login admin", weight=ft.FontWeight.BOLD),
@@ -63,28 +70,71 @@ def _tab_overview(page, user, mobile, refresh):
     ], spacing=12)
 
 
-# ------------------------------------------------------------------ laporan mahasiswa (admin dan dosen)
+# ------------------------------------------------------------------ laporan progres mahasiswa & dosen (admin dan dosen)
 def _tab_report(page, user, mobile, refresh):
-    st = {"kw": "", "sort": "persen", "desc": True}
+    st = {"kw": "", "role": "semua", "sort": "persen", "desc": True}
     list_box = ft.Column(spacing=10)
+    summary_row = ft.ResponsiveRow(spacing=12, run_spacing=12)
     count = ft.Text("", size=13, color=ft.colors.ON_SURFACE_VARIANT)
 
     def load(update=True):
-        rows = reports.student_overview(user, st["kw"], st["sort"], st["desc"])
+        all_mhs = reports.progress_overview(user, role_filter="mahasiswa")
+        all_dsn = reports.progress_overview(user, role_filter="dosen")
+        avg_mhs = sum(r["percent"] for r in all_mhs) / len(all_mhs) if all_mhs else 0.0
+        avg_dsn = sum(r["percent"] for r in all_dsn) / len(all_dsn) if all_dsn else 0.0
+        summary_row.controls = [
+            card(ft.Column([
+                ft.Text("🎓 Ringkasan Progres Mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE),
+                ft.Text(f"{len(all_mhs)} mahasiswa  •  rata-rata progres {avg_mhs:.0f}%", size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.ProgressBar(value=avg_mhs / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
+            ], spacing=6), col={"xs": 12, "md": 6}, padding=14),
+            card(ft.Column([
+                ft.Text("👨‍🏫 Ringkasan Progres Dosen", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE),
+                ft.Text(f"{len(all_dsn)} dosen  •  rata-rata progres {avg_dsn:.0f}%", size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.ProgressBar(value=avg_dsn / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
+            ], spacing=6), col={"xs": 12, "md": 6}, padding=14),
+        ]
+
+        rows = reports.progress_overview(user, st["kw"], st["sort"], st["desc"], st["role"])
         cards = []
         for r in rows:
+            is_dsn = r["role"] == "dosen"
+            role_badge = chip("DOSEN", "#DBEAFE") if is_dsn else chip("MAHASISWA", "#FFF4A3")
+            badges = [ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE), role_badge]
+            if r.get("npm"):
+                badges.append(chip(r["npm"], "#F3F4F6"))
+            badges.append(chip(f"{r['percent']:.0f}%"))
+
+            metrics = [
+                ft.Text(f"{r['done']}/{r['total']} modul", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.Text(f"🏅 {r['passed']} sertifikat", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.Text(f"Skor rata-rata {r['avg_best']:.0f}%", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+            ]
+            if is_dsn or r["modules_managed"] or r["questions_added"]:
+                metrics.extend([
+                    ft.Text(f"📚 {r['modules_managed']} aksi modul", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                    ft.Text(f"📝 {r['questions_added']} aksi soal", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                    ft.Text(f"⚡ {r['total_actions']} aktivitas", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                ])
+
             cards.append(card(ft.Column([
-                ft.Row([ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD), chip(f"{r['percent']:.0f}%")], wrap=True, spacing=8),
+                ft.Row(badges, wrap=True, spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.ProgressBar(value=r["percent"] / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
-                ft.Row([ft.Text(f"{r['done']}/{r['total']} modul", size=12), ft.Text(f"🏅 {r['passed']} sertifikat", size=12),
-                        ft.Text(f"Skor rata-rata {r['avg_best']:.0f}%", size=12)], wrap=True, spacing=14)], spacing=6), padding=12))
-        list_box.controls = cards or [ft.Text("Belum ada mahasiswa yang cocok.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]
-        count.value = f"{len(rows)} mahasiswa"
+                ft.Row(metrics, wrap=True, spacing=14),
+            ], spacing=6), padding=14))
+        list_box.controls = cards or [ft.Text("Belum ada pengguna yang cocok.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]
+        mhs_cnt = sum(1 for r in rows if r["role"] == "mahasiswa")
+        dsn_cnt = sum(1 for r in rows if r["role"] == "dosen")
+        count.value = f"{mhs_cnt} mahasiswa  •  {dsn_cnt} dosen"
         if update:
             page.update()
 
     def on_filter(e):
         st["kw"] = e.control.value or ""
+        load()
+
+    def on_role(e):
+        st["role"] = e.control.value or "semua"
         load()
 
     def on_sort(e):
@@ -98,13 +148,17 @@ def _tab_report(page, user, mobile, refresh):
 
     order_btn = ft.IconButton(ft.icons.ARROW_DOWNWARD, tooltip="Naik / turun", on_click=on_order)
     toolbar = ft.ResponsiveRow([
-        ft.TextField(hint_text="Cari nama / NPM...", prefix_icon=ft.icons.SEARCH, on_change=on_filter, border_radius=8, col={"xs": 12, "md": 5}),
-        ft.Dropdown(label="Urutkan", value="persen", on_change=on_sort, col={"xs": 8, "md": 4},
+        ft.TextField(hint_text="Cari nama / NPM...", prefix_icon=ft.icons.SEARCH, on_change=on_filter, border_radius=8, col={"xs": 12, "md": 4}),
+        ft.Dropdown(label="Peran", value="semua", on_change=on_role, col={"xs": 6, "md": 3},
+                    options=[ft.dropdown.Option(key="semua", text="Semua"),
+                             ft.dropdown.Option(key="mahasiswa", text="🎓 Mahasiswa"),
+                             ft.dropdown.Option(key="dosen", text="👨‍🏫 Dosen")]),
+        ft.Dropdown(label="Urutkan", value="persen", on_change=on_sort, col={"xs": 4, "md": 3},
                     options=[ft.dropdown.Option(key="persen", text="Progres"), ft.dropdown.Option(key="nama", text="Nama"),
                              ft.dropdown.Option(key="sertifikat", text="Sertifikat"), ft.dropdown.Option(key="nilai", text="Skor")]),
-        ft.Container(order_btn, col={"xs": 4, "md": 3})], vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        ft.Container(order_btn, col={"xs": 2, "md": 2})], vertical_alignment=ft.CrossAxisAlignment.CENTER)
     load(update=False)
-    return ft.Column([section_heading("Progres mahasiswa"), toolbar, count, list_box], spacing=10)
+    return ft.Column([section_heading("Progres Mahasiswa & Dosen"), summary_row, toolbar, count, list_box], spacing=10)
 
 
 # ------------------------------------------------------------------ pengguna

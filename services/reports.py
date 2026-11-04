@@ -31,10 +31,82 @@ def student_overview(actor, keyword: str = "", sort_by: str = "persen", descendi
         user_scores = scores.get(name, {})
         best = [rec["best"] for rec in user_scores.values()]
         rows.append({
-            "username": name, "percent": progress.percent(done, module_ids), "done": len(done), "total": len(module_ids),
+            "username": name, "role": "mahasiswa", "percent": progress.percent(done, module_ids),
+            "done": len(done), "total": len(module_ids),
             "passed": len([1 for rec in user_scores.values() if rec.get("passed_at")]), "attempted": len(user_scores),
             "avg_best": sum(best) / len(best) if best else 0.0,
             "plan": plans.get(name, {}).get("plan"), "courses": len(plans.get(name, {}).get("courses", [])),
+        })
+    return algorithms.merge_sort(rows, key=SORT_KEYS.get(sort_by, SORT_KEYS["persen"]), descending=descending)
+
+
+def progress_overview(actor, keyword: str = "", sort_by: str = "persen",
+                      descending: bool = True, role_filter: str = "semua") -> list:
+    """Laporan progres lengkap untuk mahasiswa dan dosen (modul, quiz/sertifikat, serta kontribusi dosen)."""
+    if not can_manage_content(actor):
+        return []
+    all_modules = modules.list_modules()
+    module_ids = [m["id"] for m in all_modules]
+    done_by_user = storage.load_json(progress.PROGRESS_FILE, {})
+    scores = storage.load_json("scores.json", {})
+    logs = storage.load_json("activity_log.json", [])
+    kw = (keyword or "").strip().lower()
+    rf = (role_filter or "semua").strip().lower()
+
+    # Hitung aktivitas kontribusi per pengguna (khususnya dosen)
+    mod_actions = {}
+    q_actions = {}
+    all_actions = {}
+    for entry in logs:
+        act_user = (entry.get("actor") or "").lower()
+        action = entry.get("action") or ""
+        if not act_user or act_user == "-":
+            continue
+        all_actions[act_user] = all_actions.get(act_user, 0) + 1
+        if action in ("MODUL_TAMBAH", "MODUL_UBAH", "MODUL_HAPUS", "IMPOR_CSV"):
+            mod_actions[act_user] = mod_actions.get(act_user, 0) + 1
+        elif action in ("SOAL_TAMBAH", "SOAL_HAPUS"):
+            q_actions[act_user] = q_actions.get(act_user, 0) + 1
+
+    rows = []
+    for user in storage.load_json("users.json", []):
+        role = user.get("role", "mahasiswa")
+        if role not in ("mahasiswa", "dosen"):
+            continue
+        if rf in ("mahasiswa", "dosen") and role != rf:
+            continue
+        name = user["username"]
+        npm = str(user.get("npm") or "").strip()
+        if kw and kw not in name.lower() and kw not in npm.lower() and kw not in role.lower():
+            continue
+        done = [i for i in module_ids if i in done_by_user.get(name, [])]
+        done_titles = [m["judul"] for m in all_modules if m["id"] in done]
+        user_scores = scores.get(name, {})
+        best = [rec["best"] for rec in user_scores.values()]
+        mod_pct = progress.percent(done, module_ids)
+        m_cnt = mod_actions.get(name.lower(), 0)
+        q_cnt = q_actions.get(name.lower(), 0)
+        a_cnt = all_actions.get(name.lower(), 0)
+        if role == "dosen":
+            teach_pct = min(100.0, (m_cnt * 20.0) + (q_cnt * 20.0) + (len(user_scores) * 10.0))
+            pct = max(mod_pct, teach_pct)
+        else:
+            pct = mod_pct
+        rows.append({
+            "username": name,
+            "role": role,
+            "npm": npm,
+            "percent": pct,
+            "module_percent": mod_pct,
+            "done": len(done),
+            "total": len(module_ids),
+            "done_titles": done_titles,
+            "passed": len([1 for rec in user_scores.values() if rec.get("passed_at")]),
+            "attempted": len(user_scores),
+            "avg_best": sum(best) / len(best) if best else 0.0,
+            "modules_managed": m_cnt,
+            "questions_added": q_cnt,
+            "total_actions": a_cnt,
         })
     return algorithms.merge_sort(rows, key=SORT_KEYS.get(sort_by, SORT_KEYS["persen"]), descending=descending)
 

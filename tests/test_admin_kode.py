@@ -130,6 +130,16 @@ class TestLaporan(Base):
         self.assertEqual([r["username"] for r in reports.student_overview(ADMIN, keyword="SIT")], ["siti_01"])
         self.assertEqual(reports.student_overview(MHS), [])                                  # mahasiswa tidak boleh
         self.assertEqual(reports.student_overview(DOSEN, sort_by="tidak-ada")[0]["username"], "budi123")
+        # Verifikasi progress_overview untuk mahasiswa dan dosen di panel admin
+        auth.create_user(ADMIN, "dosen_01", "dosen", "Dosen12345")
+        progress.toggle_done("dosen_01", [m["id"] for m in modules.list_modules()][0])
+        all_prog = reports.progress_overview(ADMIN, role_filter="semua")
+        roles_in_prog = {r["role"] for r in all_prog}
+        self.assertEqual(roles_in_prog, {"mahasiswa", "dosen"})
+        dsn_prog = reports.progress_overview(ADMIN, role_filter="dosen")
+        self.assertEqual(len(dsn_prog), 1)
+        self.assertEqual(dsn_prog[0]["username"], "dosen_01")
+        self.assertGreater(dsn_prog[0]["percent"], 0.0)
 
     def test_T67_statistik_sistem_hanya_admin(self):
         self.seed()
