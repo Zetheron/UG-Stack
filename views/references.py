@@ -2,7 +2,7 @@ import flet as ft
 
 from components.i18n_ui import translate_tree
 from components.live import loading_row, r_doc, r_so, run_in_thread
-from components.ui import GREEN, card, green_button, link_text, page_banner, pad, section_heading
+from components.ui import GREEN, card, green_button, lang_logo, link_text, page_banner, pad, section_heading
 from content.languages import LANGS
 from content.reference import REFERENCE
 from services import web_sources as ws
@@ -83,7 +83,7 @@ def get_references_view(page: ft.Page, lang: dict, mobile: bool, on_lang):
         page_banner("Referensi", "Ringkasan sintaks dan pencarian dokumentasi.", mobile),
         ft.Container(padding=pad(mobile), content=ft.Column([
             chips,
-            ft.Text(f"{lang['icon']} {lang['name']} - Ringkasan Sintaks", size=22, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+            ft.Row([lang_logo(lang["key"], 26), ft.Text(f"{lang['name']} - Ringkasan Sintaks", size=22, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE)], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             filter_box,
             ft.Container(content=table, border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)), border_radius=12, bgcolor=ft.colors.SURFACE),
             card(ft.Row([ft.Text("📚 Dokumentasi resmi:", size=14, color=ft.colors.ON_SURFACE),

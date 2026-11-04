@@ -14,6 +14,7 @@ from components.dashboard_theme import (
     top_bar,
     user_avatar_badge,
 )
+from components.ui import lang_logo
 from content.languages import find_lang
 from services import auth, modules as svc, progress, reports
 from services.roles import can_manage_content, is_admin
@@ -178,7 +179,7 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
             col={"xs": 12, "sm": 6, "md": 4},
             padding=20,
             content=ft.Column([
-                ft.Row([chip_lang, chip_level], wrap=True, spacing=6),
+                ft.Row([lang_logo(m["bahasa"], 22), chip_lang, chip_level], wrap=True, spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.Text(m["judul"], size=17, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
                 ft.Text(m["deskripsi"] or "-", size=13, color=TEXT_MUTED),
                 ft.Row([ft.Icon(ft.icons.TIMER, size=16, color=TEXT_MUTED),

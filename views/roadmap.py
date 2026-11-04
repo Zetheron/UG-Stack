@@ -1,6 +1,6 @@
 import flet as ft
 
-from components.ui import GREEN, card, green_button, page_banner, pad
+from components.ui import GREEN, card, green_button, lang_logo, page_banner, pad
 from content.languages import BY_KEY
 from content.pages import ROADMAP
 
@@ -14,7 +14,8 @@ def get_roadmap_view(page: ft.Page, mobile: bool, on_open_lang):
             steps.append(ft.Row([
                 ft.Container(ft.Text(str(n), color=ft.colors.WHITE, weight=ft.FontWeight.BOLD), bgcolor=GREEN, width=28, height=28,
                              border_radius=14, alignment=ft.alignment.center),
-                ft.Column([ft.Text(f"{lang['icon']} {lang['name']}", size=14, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+                lang_logo(lang["key"], 22),
+                ft.Column([ft.Text(lang["name"], size=14, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
                            ft.Text(note, size=12, color=ft.colors.ON_SURFACE_VARIANT)], spacing=0, expand=True),
                 ft.TextButton("Mulai ❯", on_click=lambda e, k=key: on_open_lang(k)),
             ], vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=10))

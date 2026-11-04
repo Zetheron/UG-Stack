@@ -1,7 +1,7 @@
 import flet as ft
 
 from components.live import language_live_section
-from components.ui import (DARK, GREEN, SIDEBAR, card, chip, code_block, dark_button, green_button, link_text,
+from components.ui import (DARK, GREEN, SIDEBAR, card, chip, code_block, dark_button, green_button, lang_logo, link_text,
                            pad, section_heading)
 from content.lessons import LESSONS
 
@@ -16,7 +16,7 @@ def get_lesson_view(page: ft.Page, lang: dict, idx: int, mobile: bool, on_lesson
     hero = ft.Container(
         bgcolor=DARK, padding=ft.padding.symmetric(vertical=24, horizontal=pad(mobile)),
         content=ft.Row([
-            ft.Container(ft.Text(lang["icon"], size=34), bgcolor=lang["color"], width=62, height=62, border_radius=12,
+            ft.Container(lang_logo(lang["key"], 36), bgcolor=ft.colors.WHITE, width=60, height=60, border_radius=12,
                          alignment=ft.alignment.center),
             ft.Column([
                 ft.Text(f"Tutorial {lang['name']}", size=26 if not mobile else 22, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),

@@ -1,6 +1,6 @@
 import flet as ft
 
-from components.ui import DARK, GREEN, card, chip, dark_button, green_button, page_banner, pad
+from components.ui import DARK, GREEN, card, chip, dark_button, green_button, lang_logo, page_banner, pad
 from content.languages import BY_KEY, LANGS
 from content.quizzes import PASS_PERCENT
 from services import quiz as quiz_service
@@ -67,7 +67,7 @@ def get_certificates_view(page: ft.Page, user, mobile: bool, on_login, on_quiz, 
                                 [
                                     ft.Row(
                                         [
-                                            ft.Text("🏅" if earned else "🔒", size=22),
+                                            lang_logo(l["key"], 22),
                                             ft.Text(f"Sertifikat {l['name']}", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
                                         ],
                                         spacing=8,

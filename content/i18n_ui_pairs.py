@@ -479,6 +479,7 @@ UI_PATTERNS = [
     ("✓ Selesai ({} / 10:00)", "✓ Finished ({} / 10:00)"),
     ("⏱️ Waktu pengerjaan: {} dari 10:00", "⏱️ Time taken: {} of 10:00"),
     ("{} {} - Ringkasan Sintaks", "{} {} - Cheat Sheet"),
+    ("{} - Ringkasan Sintaks", "{} - Cheat Sheet"),
     ("{} {} - Cheat Sheet", "{} {} - Cheat Sheet"),
     ("{} — {}/{} modul ({}%)", "{} — {}/{} modules ({}%)"),
     ("{}% — {} dari {} modul selesai", "{}% — {} of {} modules done"),

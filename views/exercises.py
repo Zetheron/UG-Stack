@@ -4,7 +4,7 @@ import time
 import flet as ft
 
 from components.code_editor import get_samples
-from components.ui import GREEN, card, chip, dark_button, green_button, page_banner, pad
+from components.ui import GREEN, card, chip, dark_button, green_button, lang_logo, page_banner, pad
 from content.languages import LANGS
 from content.quizzes import PASS_PERCENT
 from services import quiz as quiz_service
@@ -43,7 +43,7 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
                             [
                                 ft.Row(
                                     [
-                                        ft.Text(l["icon"], size=24),
+                                        lang_logo(l["key"], 24),
                                         ft.Text(f"Quiz {l['name']}", size=17, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
                                     ],
                                     spacing=10,

@@ -1,6 +1,6 @@
 import flet as ft
 
-from components.ui import GREEN, card, chip, green_button, page_banner, pad
+from components.ui import GREEN, card, chip, green_button, lang_logo, page_banner, pad
 from content.languages import LANGS
 from content.lessons import LESSONS
 
@@ -21,7 +21,14 @@ def get_tutorials_view(page: ft.Page, mobile: bool, on_open_lang, on_roadmap):
                             border_radius=ft.border_radius.only(top_left=12, top_right=12),
                             content=ft.Row(
                                 [
-                                    ft.Text(l["icon"], size=24),
+                                    ft.Container(
+                                        content=lang_logo(l["key"], 22),
+                                        bgcolor=ft.colors.WHITE,
+                                        width=34,
+                                        height=34,
+                                        border_radius=8,
+                                        alignment=ft.alignment.center,
+                                    ),
                                     ft.Text(f"Tutorial {l['name']}", size=18, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
                                 ],
                                 spacing=10,

@@ -1,19 +1,6 @@
 import flet as ft
 
-COURSE_ICONS = {
-    "HTML": "🌐",
-    "CSS": "🎨",
-    "JavaScript": "⚡",
-    "Python": "🐍",
-    "SQL": "🗄️",
-    "PHP": "🐘",
-    "jQuery": "🧩",
-    "Java": "☕",
-    "C++": "⚙️",
-    "C#": "🎯",
-    "React": "⚛️",
-    "MySQL": "🐬",
-}
+from components.ui import LOGO_URLS, lang_logo
 
 COURSES = [
     ("HTML", "The building blocks of every webpage", "#D9EEE1"),
@@ -32,8 +19,6 @@ COURSES = [
 
 
 def create_course_card(title, desc, color_bg, on_select_course=None):
-    icon_char = COURSE_ICONS.get(title, "💻")
-
     return ft.Container(
         bgcolor=ft.colors.SURFACE,
         padding=20,
@@ -47,12 +32,12 @@ def create_course_card(title, desc, color_bg, on_select_course=None):
             spacing=8,
             controls=[
                 ft.Container(
-                    width=52,
-                    height=52,
+                    width=54,
+                    height=54,
                     bgcolor=color_bg,
                     border_radius=12,
                     alignment=ft.alignment.center,
-                    content=ft.Text(icon_char, size=26),
+                    content=lang_logo(title, 32),
                 ),
                 ft.Text(title, size=20, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE, text_align=ft.TextAlign.CENTER),
                 ft.Container(
