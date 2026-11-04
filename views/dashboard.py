@@ -1,4 +1,18 @@
 import flet as ft
+from components.dashboard_theme import (
+    BG_CARD,
+    BG_MAIN,
+    BORDER_SUBTLE,
+    TEXT_MUTED,
+    TEXT_PRIMARY,
+    activity_trend_card,
+    categories_donut_card,
+    glass_card,
+    kpi_glow_card,
+    sidebar_nav_btn,
+    sidebar_shell,
+    top_bar,
+)
 from content.languages import find_lang
 from services import auth, modules as svc, progress, reports
 from services.roles import can_manage_content, is_admin
@@ -15,8 +29,10 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
     f = {"keyword": "", "bahasa": "Semua", "sort_by": "judul", "desc": False}
 
     list_area = ft.ResponsiveRow(spacing=16, run_spacing=16)
+    kpi_area = ft.ResponsiveRow(spacing=16, run_spacing=16)
+    analytics_area = ft.ResponsiveRow(spacing=16, run_spacing=16)
     summary = ft.Column(spacing=8)
-    count_text = ft.Text("", size=13, color=ft.colors.ON_SURFACE_VARIANT)
+    count_text = ft.Text("", size=13, color=TEXT_MUTED)
 
     # ---------------------------------------------------------------- data -> tampilan
     def refresh(update=True):
@@ -37,33 +53,41 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
         if not shown:
             list_area.controls = [ft.Container(
                 col=12, padding=20, alignment=ft.alignment.center,
-                content=ft.Text("Tidak ada modul yang cocok dengan pencarian.", color=ft.colors.ON_SURFACE_VARIANT))]
+                content=ft.Text("Tidak ada modul yang cocok dengan pencarian.", color=TEXT_MUTED))]
         count_text.value = f"Menampilkan {len(shown)} dari {len(all_modules)} modul"
 
         if admin:
             avg = sum(r[2] for r in ranking) / len(ranking) if ranking else 0.0
             avg_dsn = sum(r["percent"] for r in lecturers) / len(lecturers) if lecturers else 0.0
+            kpi_area.controls = [
+                kpi_glow_card("TOTAL MODUL", str(len(all_modules)), ft.icons.MENU_BOOK_ROUNDED, "#8B5CF6", "📚 Modul"),
+                kpi_glow_card("MODUL AKTIF", str(len(shown)), ft.icons.BAR_CHART_ROUNDED, "#3B82F6", "📚 Daftar Modul"),
+                kpi_glow_card("TOTAL MAHASISWA", str(len(students)), ft.icons.GROUPS_ROUNDED, "#10B981", "🎓 Mahasiswa"),
+                kpi_glow_card("TOTAL DOSEN", str(len(lecturers)), ft.icons.SCHOOL_ROUNDED, "#F59E0B", "👨‍🏫 Dosen"),
+                kpi_glow_card("RATA-RATA MAHASISWA", f"{avg:.0f}%", ft.icons.INSIGHTS_ROUNDED, "#EC4899", "Progres mahasiswa"),
+                kpi_glow_card("RATA-RATA DOSEN", f"{avg_dsn:.0f}%", ft.icons.STAR_ROUNDED, "#EAB308", "Progres dosen"),
+            ]
             summary.controls = [
-                ft.Text("Ringkasan", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE),
+                ft.Text("Ringkasan", weight=ft.FontWeight.BOLD, size=16, color=TEXT_PRIMARY),
                 ft.Text(f"{len(all_modules)} modul  •  {len(students)} mahasiswa  •  rata-rata progres {avg:.0f}%",
-                        size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                        size=13, color=TEXT_MUTED),
                 ft.Text(f"{len(lecturers)} dosen  •  rata-rata progres {avg_dsn:.0f}%",
-                        size=13, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.Divider(height=8),
-                ft.Text("Progres mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE),
+                        size=13, color=TEXT_MUTED),
+                ft.Divider(height=8, color=BORDER_SUBTLE),
+                ft.Text("Progres mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
             ]
             if not ranking:
-                summary.controls.append(ft.Text("Belum ada mahasiswa terdaftar.", size=13, color=ft.colors.ON_SURFACE_VARIANT))
+                summary.controls.append(ft.Text("Belum ada mahasiswa terdaftar.", size=13, color=TEXT_MUTED))
             for name, n, pct in ranking[:5]:
-                summary.controls.append(ft.Text(f"{name} — {n}/{len(ids)} modul ({pct:.0f}%)", size=13, color=ft.colors.ON_SURFACE_VARIANT))
-                summary.controls.append(ft.ProgressBar(value=pct / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE)))
-            summary.controls.append(ft.Divider(height=8))
-            summary.controls.append(ft.Text("Progres dosen", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE))
+                summary.controls.append(ft.Text(f"{name} — {n}/{len(ids)} modul ({pct:.0f}%)", size=13, color=TEXT_MUTED))
+                summary.controls.append(ft.ProgressBar(value=pct / 100, color="#10B981", bgcolor=BORDER_SUBTLE))
+            summary.controls.append(ft.Divider(height=8, color=BORDER_SUBTLE))
+            summary.controls.append(ft.Text("Progres dosen", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY))
             if not lecturers:
-                summary.controls.append(ft.Text("Belum ada dosen terdaftar.", size=13, color=ft.colors.ON_SURFACE_VARIANT))
+                summary.controls.append(ft.Text("Belum ada dosen terdaftar.", size=13, color=TEXT_MUTED))
             for r in lecturers[:5]:
-                summary.controls.append(ft.Text(f"{r['username']} — {r['done']}/{r['total']} modul ({r['percent']:.0f}%)", size=13, color=ft.colors.ON_SURFACE_VARIANT))
-                summary.controls.append(ft.ProgressBar(value=r["percent"] / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE)))
+                summary.controls.append(ft.Text(f"{r['username']} — {r['done']}/{r['total']} modul ({r['percent']:.0f}%)", size=13, color=TEXT_MUTED))
+                summary.controls.append(ft.ProgressBar(value=r["percent"] / 100, color="#F59E0B", bgcolor=BORDER_SUBTLE))
         else:
             pct = progress.percent(done_ids, ids)
             n = len([i for i in ids if i in done_ids])
@@ -71,23 +95,36 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
             nxt, weak = sm["next_module"], sm["weakest_lang"]
             next_lang = find_lang(nxt["bahasa"]) if nxt else None
             weak_lang = find_lang(weak) if weak else None
-            extra = [ft.Text(f"🏅 Sertifikat: {sm['passed']}  •  Quiz dicoba: {sm['attempted']}", size=13, color=ft.colors.ON_SURFACE_VARIANT)]
+            kpi_area.controls = [
+                kpi_glow_card("TOTAL MODUL", str(len(ids)), ft.icons.MENU_BOOK_ROUNDED, "#8B5CF6", "📚 Modul"),
+                kpi_glow_card("MODUL SELESAI", f"{n}/{len(ids)}", ft.icons.TASK_ALT_ROUNDED, "#3B82F6", "✓ Selesai"),
+                kpi_glow_card("PROGRES BELAJAR", f"{pct:.0f}%", ft.icons.TRENDING_UP_ROUNDED, "#10B981", "Progres"),
+                kpi_glow_card("QUIZ DICOBA", str(sm["attempted"]), ft.icons.QUIZ_ROUNDED, "#F59E0B", "🧪 Percobaan quiz"),
+                kpi_glow_card("SERTIFIKAT TERBIT", str(sm["passed"]), ft.icons.WORKSPACE_PREMIUM_ROUNDED, "#EC4899", "🏅 Sertifikat"),
+                kpi_glow_card("SKOR RATA-RATA", f"{pct:.0f}%", ft.icons.STAR_ROUNDED, "#EAB308", "Skor"),
+            ]
+            extra = [ft.Text(f"🏅 Sertifikat: {sm['passed']}  •  Quiz dicoba: {sm['attempted']}", size=13, color=TEXT_MUTED)]
             if nxt and next_lang:
-                extra.append(ft.Row([ft.Text("Lanjutkan belajar:", size=13, color=ft.colors.ON_SURFACE_VARIANT),
+                extra.append(ft.Row([ft.Text("Lanjutkan belajar:", size=13, color=TEXT_MUTED),
                                      ft.OutlinedButton(f"{nxt['judul']} ❯", on_click=lambda e, k=next_lang["key"]: on_open_lang(k) if on_open_lang else None)],
                                     wrap=True, spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER))
             if weak_lang:
                 extra.append(ft.OutlinedButton(f"Ulangi quiz {weak_lang['name']} ❯",
                                                on_click=lambda e, k=weak_lang["key"]: on_quiz(k) if on_quiz else None))
             summary.controls = [
-                ft.Text("Progres Belajar Anda", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE),
-                ft.ProgressBar(value=pct / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=10),
-                ft.Text(f"{pct:.0f}% — {n} dari {len(ids)} modul selesai", size=13, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.Divider(height=8),
+                ft.Text("Progres Belajar Anda", weight=ft.FontWeight.BOLD, size=16, color=TEXT_PRIMARY),
+                ft.ProgressBar(value=pct / 100, color="#10B981", bgcolor=BORDER_SUBTLE, height=10),
+                ft.Text(f"{pct:.0f}% — {n} dari {len(ids)} modul selesai", size=13, color=TEXT_MUTED),
+                ft.Divider(height=8, color=BORDER_SUBTLE),
                 *extra,
                 ft.Row([ft.OutlinedButton("Quiz & sertifikat", on_click=lambda e: on_nav("exercises") if on_nav else None)],
                        wrap=True, spacing=6, run_spacing=6),
             ]
+
+        analytics_area.controls = [
+            activity_trend_card(extra_bottom=summary, col={"xs": 12, "lg": 8}),
+            categories_donut_card(len(all_modules), col={"xs": 12, "lg": 4}),
+        ]
         if update:
             page.update()
 
@@ -112,15 +149,15 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
             ], wrap=True, spacing=6)
         else:
             actions = ft.Row([done_btn])
-        return ft.Container(
-            col={"xs": 12, "sm": 6, "md": 4}, bgcolor=ft.colors.SURFACE, padding=20, border_radius=12,
-            border=ft.border.all(1, ft.colors.with_opacity(0.18, ft.colors.OUTLINE)),
+        return glass_card(
+            col={"xs": 12, "sm": 6, "md": 4},
+            padding=20,
             content=ft.Column([
                 ft.Row([chip_lang, chip_level], wrap=True, spacing=6),
-                ft.Text(m["judul"], size=17, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
-                ft.Text(m["deskripsi"] or "-", size=13, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.Row([ft.Icon(ft.icons.TIMER, size=16, color=ft.colors.ON_SURFACE_VARIANT),
-                        ft.Text(f"{m['durasi']} menit", size=12, color=ft.colors.ON_SURFACE_VARIANT)], spacing=4),
+                ft.Text(m["judul"], size=17, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                ft.Text(m["deskripsi"] or "-", size=13, color=TEXT_MUTED),
+                ft.Row([ft.Icon(ft.icons.TIMER, size=16, color=TEXT_MUTED),
+                        ft.Text(f"{m['durasi']} menit", size=12, color=TEXT_MUTED)], spacing=4),
                 actions,
             ], spacing=10)
         )
@@ -211,52 +248,87 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
         refresh()
 
     search = ft.TextField(hint_text="Cari modul...", prefix_icon=ft.icons.SEARCH, on_change=on_search,
-                          color=ft.colors.ON_SURFACE, border_radius=8, col={"xs": 12, "md": 4})
-    bahasa_dd = ft.Dropdown(label="Bahasa", value="Semua", on_change=on_bahasa, col={"xs": 6, "md": 3},
+                          bgcolor=BG_CARD, color=TEXT_PRIMARY, border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 12, "md": 4})
+    bahasa_dd = ft.Dropdown(label="Bahasa", value="Semua", on_change=on_bahasa, bgcolor=BG_CARD, color=TEXT_PRIMARY,
+                            border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 6, "md": 3},
                             options=[ft.dropdown.Option("Semua", "Semua")] + [ft.dropdown.Option(b, b) for b in BAHASA])
-    sort_dd = ft.Dropdown(label="Urutkan", value="judul", on_change=on_sort, col={"xs": 6, "md": 3},
+    sort_dd = ft.Dropdown(label="Urutkan", value="judul", on_change=on_sort, bgcolor=BG_CARD, color=TEXT_PRIMARY,
+                          border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 6, "md": 3},
                           options=[ft.dropdown.Option(key=k, text=t) for k, t in SORT_OPTIONS])
-    order_btn = ft.IconButton(ft.icons.ARROW_UPWARD, tooltip="Naik / turun", on_click=on_order)
+    order_btn = ft.IconButton(ft.icons.ARROW_UPWARD, icon_color=TEXT_PRIMARY, tooltip="Naik / turun", on_click=on_order)
     toolbar = ft.ResponsiveRow([search, bahasa_dd, sort_dd, ft.Container(order_btn, col={"xs": 12, "md": 2})],
                                vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
-    # ---------------------------------------------------------------- tata letak
-    pad = 16 if mobile else 32
-    role_chip = ft.Container(
-        ft.Text(user["role"].upper(), size=11, weight=ft.FontWeight.BOLD, color=ft.colors.BLACK),
-        bgcolor="#FFF4A3", padding=ft.padding.symmetric(horizontal=8, vertical=3), border_radius=8)
-    header = ft.Container(
-        bgcolor="#282A35", padding=pad,
-        content=ft.Column([
-            ft.Text(f"Halo, {user['username']} 👋", size=22 if mobile else 28,
-                    weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
-            ft.Row([role_chip,
-                    ft.ElevatedButton("Ganti password", bgcolor=ft.colors.GREY_800, color=ft.colors.WHITE,
-                                      on_click=lambda e: on_change_password() if on_change_password else None),
-                    *([ft.ElevatedButton("Panel Admin ❯" if is_admin(user) else "Panel Dosen ❯", bgcolor="#04AA6D",
-                                         color=ft.colors.WHITE,
-                                         on_click=lambda e: on_admin("ringkasan" if is_admin(user) else "laporan") if on_admin else None)]
-                      if admin else []),
-                    ft.ElevatedButton("Keluar", icon=ft.icons.LOGOUT, bgcolor=ft.colors.GREY_700, color=ft.colors.WHITE,
-                                      on_click=lambda e: on_logout() if on_logout else None)],
-                   wrap=True, spacing=10),
-        ], spacing=10)
+    # ---------------------------------------------------------------- tata letak bergaya ModyLearn
+    pad = 16 if mobile else 28
+    nav_buttons = [
+        sidebar_nav_btn("📚 Daftar Modul", True, lambda e: refresh()),
+        sidebar_nav_btn("📝 Quiz & sertifikat", False, lambda e: on_nav("exercises") if on_nav else None),
+        sidebar_nav_btn("🏅 Sertifikat", False, lambda e: on_nav("certificates") if on_nav else None),
+        sidebar_nav_btn("💬 Diskusi", False, lambda e: on_nav("chat") if on_nav else None),
+        sidebar_nav_btn("🗺️ Alur Belajar", False, lambda e: on_nav("roadmap") if on_nav else None),
+    ]
+    if admin:
+        nav_buttons.insert(
+            0,
+            sidebar_nav_btn(
+                "Panel Admin ❯" if is_admin(user) else "Panel Dosen ❯",
+                False,
+                lambda e: on_admin("ringkasan" if is_admin(user) else "laporan") if on_admin else None,
+            ),
+        )
+
+    sidebar = sidebar_shell(
+        brand_title="Dasbor",
+        nav_buttons=nav_buttons,
+        user=user,
+        profile_actions=[
+            ft.TextButton("Ganti password", on_click=lambda e: on_change_password() if on_change_password else None),
+            ft.ElevatedButton(
+                "Keluar",
+                icon=ft.icons.LOGOUT,
+                bgcolor="#3A1A22",
+                color="#F87171",
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), elevation=0),
+                on_click=lambda e: on_logout() if on_logout else None,
+            ),
+        ],
     )
+
     list_title = ft.Row(
-        [ft.Text("Daftar Modul", size=20, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE)]
+        [ft.Text("Daftar Modul", size=20, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY)]
         + ([ft.ElevatedButton("Tambah Modul", icon=ft.icons.ADD, bgcolor="#04AA6D", color=ft.colors.WHITE,
                               on_click=lambda e: open_form())] if admin else []),
-        wrap=True, spacing=15)
+        wrap=True, spacing=15, alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+
+    right_top = []
+    if admin:
+        right_top.append(
+            ft.ElevatedButton(
+                "Panel Admin ❯" if is_admin(user) else "Panel Dosen ❯",
+                bgcolor="#04AA6D",
+                color=ft.colors.WHITE,
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), elevation=0),
+                on_click=lambda e: on_admin("ringkasan" if is_admin(user) else "laporan") if on_admin else None,
+            )
+        )
 
     refresh(update=False)
-    return ft.Column([
-        header,
-        ft.Container(padding=pad, content=ft.Column([
-            ft.Container(bgcolor=ft.colors.PRIMARY_CONTAINER, border_radius=12, padding=20, content=summary),
+    main_panel = ft.Container(
+        col={"xs": 12, "md": 9, "lg": 9},
+        content=ft.Column([
+            top_bar(f"Halo, {user['username']} 👋", "Ringkasan aktivitas platform Anda", right_controls=right_top),
+            kpi_area,
+            analytics_area,
             ft.Container(height=4),
             list_title,
             toolbar,
             count_text,
             list_area,
-        ], spacing=14)),
-    ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+        ], spacing=16),
+    )
+    return ft.Container(
+        bgcolor=BG_MAIN,
+        padding=pad,
+        content=ft.ResponsiveRow([sidebar, main_panel], spacing=20, run_spacing=18),
+    )

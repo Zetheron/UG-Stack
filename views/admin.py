@@ -1,5 +1,17 @@
 import flet as ft
 
+from components.dashboard_theme import (
+    BG_MAIN,
+    TEXT_MUTED,
+    TEXT_PRIMARY,
+    activity_trend_card,
+    categories_donut_card,
+    glass_card,
+    kpi_glow_card,
+    sidebar_nav_btn,
+    sidebar_shell,
+    top_bar,
+)
 from components.ui import GREEN, card, chip, dark_button, green_button, page_banner, pad, section_heading
 from content.languages import LANGS
 from services import audit, auth, backup, csv_io, quiz_admin, reports, settings
@@ -18,20 +30,37 @@ def get_admin_view(page: ft.Page, user: dict, tab: str, mobile: bool, on_tab, on
     allowed = allowed_tabs(user)
     if tab not in allowed:
         tab = allowed[0]
-    tab_row = ft.Row([ft.ElevatedButton(label, bgcolor=GREEN if key == tab else ft.colors.SURFACE_VARIANT,
-                                        color=ft.colors.WHITE if key == tab else ft.colors.BLACK,
-                                        on_click=lambda e, k=key: on_tab(k)) for key, label in TABS if key in allowed],
-                     wrap=True, spacing=6, run_spacing=6)
     builders = {"ringkasan": _tab_overview, "laporan": _tab_report, "pengguna": _tab_users, "akun": _tab_accounts, "soal": _tab_questions, "log": _tab_logs, "data": _tab_data}
     body = builders[tab](page, user, mobile, lambda: on_tab(tab))
     title = "Panel Admin" if is_admin(user) else "Panel Dosen"
     sub = "Pantau progres mahasiswa & dosen; kelola akun, soal quiz, log aktivitas, dan data." if is_admin(user) else "Pantau progres mahasiswa & dosen serta kelola soal quiz."
-    return ft.Column([
-        page_banner(title, sub, mobile),
-        ft.Container(padding=pad(mobile), content=ft.Column([
-            ft.Row([dark_button("❮ Dasbor", lambda e: on_dashboard()), ], spacing=8),
-            tab_row, body], spacing=14)),
-    ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+
+    nav_buttons = [sidebar_nav_btn(label, key == tab, lambda e, k=key: on_tab(k)) for key, label in TABS if key in allowed]
+    nav_buttons.append(sidebar_nav_btn("📚 Daftar Modul", False, lambda e: on_dashboard()))
+
+    sidebar = sidebar_shell(
+        brand_title=title,
+        nav_buttons=nav_buttons,
+        user=user,
+        profile_actions=[
+            dark_button("❮ Dasbor", lambda e: on_dashboard()),
+        ],
+    )
+    main_panel = ft.Container(
+        col={"xs": 12, "md": 9, "lg": 9},
+        content=ft.Column(
+            [
+                top_bar(title, sub, right_controls=[dark_button("❮ Dasbor", lambda e: on_dashboard())]),
+                body,
+            ],
+            spacing=18,
+        ),
+    )
+    return ft.Container(
+        bgcolor=BG_MAIN,
+        padding=pad(mobile),
+        content=ft.ResponsiveRow([sidebar, main_panel], spacing=20, run_spacing=18),
+    )
 
 
 def _dialog(page, title, content, actions):
@@ -53,21 +82,67 @@ def _tab_overview(page, user, mobile, refresh):
     avg_mhs = sum(r["percent"] for r in mhs_rows) / len(mhs_rows) if mhs_rows else 0.0
     avg_dsn = sum(r["percent"] for r in dsn_rows) / len(dsn_rows) if dsn_rows else 0.0
 
-    def stat(label, value):
-        return card(ft.Column([ft.Text(str(value), size=28, weight=ft.FontWeight.BOLD, color="#04AA6D"),
-                               ft.Text(label, size=12, color=ft.colors.ON_SURFACE_VARIANT)], spacing=2), col={"xs": 6, "md": 3})
-    cards = [stat("🎓 Mahasiswa", st["users"]["mahasiswa"]), stat("👨‍🏫 Dosen", st["users"]["dosen"]),
-             stat("🛡️ Admin", st["users"]["admin"]), stat("📚 Modul", st["modules"]),
-             stat("📝 Soal kustom", st["custom_questions"]), stat("🧪 Percobaan quiz", st["quiz_attempts"]),
-             stat("🏅 Sertifikat terbit", st["certificates"]),
-             stat("📈 Rata-rata Mahasiswa", f"{avg_mhs:.0f}%"),
-             stat("📈 Rata-rata Dosen", f"{avg_dsn:.0f}%")]
-    return ft.Column([
-        section_heading("Ringkasan sistem"), ft.ResponsiveRow(cards, spacing=12, run_spacing=12),
-        card(ft.Column([ft.Text("Login admin", weight=ft.FontWeight.BOLD),
-                        ft.Text("Admin hanya masuk dengan kode 16 karakter yang berganti setiap 60 detik (tools/admin_generator.html). "
-                                "Tidak ada tombol admin di halaman login.", size=13, color=ft.colors.ON_SURFACE_VARIANT)], spacing=4)),
-    ], spacing=12)
+    cards = [
+        kpi_glow_card("TOTAL MODUL", str(st["modules"]), ft.icons.MENU_BOOK_ROUNDED, "#8B5CF6", "📚 Modul"),
+        kpi_glow_card("TOTAL MAHASISWA", str(st["users"]["mahasiswa"]), ft.icons.GROUPS_ROUNDED, "#10B981", f"📈 Rata-rata Mahasiswa: {avg_mhs:.0f}%"),
+        kpi_glow_card("TOTAL DOSEN", str(st["users"]["dosen"]), ft.icons.SCHOOL_ROUNDED, "#F59E0B", f"📈 Rata-rata Dosen: {avg_dsn:.0f}%"),
+        kpi_glow_card("📝 Soal kustom", str(st["custom_questions"]), ft.icons.QUIZ_ROUNDED, "#3B82F6", f"🛡️ Admin: {st['users']['admin']}"),
+        kpi_glow_card("PERCOBAAN QUIZ", str(st["quiz_attempts"]), ft.icons.INSIGHTS_ROUNDED, "#EC4899", "🧪 Percobaan quiz"),
+        kpi_glow_card("SERTIFIKAT TERBIT", str(st["certificates"]), ft.icons.WORKSPACE_PREMIUM_ROUNDED, "#EAB308", "🏅 Sertifikat terbit"),
+    ]
+
+    prog_preview = ft.Column(
+        [
+            ft.Row(
+                [
+                    ft.Text("🎓 Ringkasan Progres Mahasiswa", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                    ft.Text(f"{avg_mhs:.0f}%", size=12, weight=ft.FontWeight.BOLD, color="#10B981"),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            ft.ProgressBar(value=avg_mhs / 100, color="#10B981", bgcolor="#262240", height=7),
+            ft.Row(
+                [
+                    ft.Text("👨‍🏫 Ringkasan Progres Dosen", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                    ft.Text(f"{avg_dsn:.0f}%", size=12, weight=ft.FontWeight.BOLD, color="#F59E0B"),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            ft.ProgressBar(value=avg_dsn / 100, color="#F59E0B", bgcolor="#262240", height=7),
+        ],
+        spacing=6,
+    )
+
+    bottom_analytics = ft.ResponsiveRow(
+        [
+            activity_trend_card(extra_bottom=prog_preview, col={"xs": 12, "lg": 8}),
+            categories_donut_card(st["modules"], col={"xs": 12, "lg": 4}),
+        ],
+        spacing=16,
+        run_spacing=16,
+    )
+
+    return ft.Column(
+        [
+            ft.ResponsiveRow(cards, spacing=16, run_spacing=16),
+            bottom_analytics,
+            glass_card(
+                ft.Column(
+                    [
+                        ft.Text("Login admin", weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                        ft.Text(
+                            "Admin hanya masuk dengan kode 16 karakter yang berganti setiap 60 detik (tools/admin_generator.html). "
+                            "Tidak ada tombol admin di halaman login.",
+                            size=13,
+                            color=TEXT_MUTED,
+                        ),
+                    ],
+                    spacing=4,
+                )
+            ),
+        ],
+        spacing=16,
+    )
 
 
 # ------------------------------------------------------------------ laporan progres mahasiswa & dosen (admin dan dosen)

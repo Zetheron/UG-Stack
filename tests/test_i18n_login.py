@@ -87,6 +87,7 @@ class TestTerjemahan(unittest.TestCase):
                    "UG-Stack - Learn to Code", "UG-Stack Home", "UG-Stack Learning Platform", "UG-Stack Spaces",
                    "UG_ADMIN_PASSWORD", "UG_ADMIN_MASTER_PASSWORD", "UGStack_Admin_Rahasia_Gunadarma_2026!", "Upgrade",
                    "Wikipedia", "iOS", "jQuery", "lIO", "list comprehension", "useState", "❮ Dashboard", "💾 Data (CSV/Backup)",
+                   "JAN", "MAR", "JUL", "SEP", "NOV",
                    "📋 Cheat sheet", "Mode: {}", "memilih {}, akun {}", "pendaftaran mandiri {}", "percobaan ke-{}",
                    "{} dibuat, {} dilewati", "{} ditambah, {} dilewati", "ADMIN_KODE_GAGAL", "🛡️ Admin",
                    "LOGIN_ADMIN_DITOLAK", "LOGIN_ADMIN_GAGAL", "LOGIN_ADMIN_KODE", "admin mencoba login dengan password",
