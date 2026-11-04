@@ -5,7 +5,7 @@ from services import auth, settings
 
 ROLE_CHOICES = [("mahasiswa", "🎓 Mahasiswa"), ("dosen", "👨‍🏫 Dosen")]
 ID_LABEL = {"mahasiswa": "NPM / Username", "dosen": "Username / NIDN"}
-HINT = {"mahasiswa": "Masukkan NPM atau username Anda, lalu password.",
+HINT = {"mahasiswa": "Masukkan nama lengkap, NPM, dan password Anda.",
         "dosen": "Akun dosen dibuat oleh admin. Gunakan username/NIDN dan password sementara dari admin."}
 ADMIN_TAPS = 7          # ketuk judul kartu 7 kali untuk membuka masuk khusus (tidak ada tombol admin di halaman ini)
 
@@ -46,10 +46,25 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
     if role != "mahasiswa":
         mode = "login"                                   # dosen tidak bisa mendaftar sendiri
     is_login = mode == "login"
+    is_mhs = role == "mahasiswa"
 
-    username = ft.TextField(label=ID_LABEL[role] if is_login else "NPM / Username (4-20 huruf/angka)", autofocus=True,
-                            border_radius=8)
-    npm_field = ft.TextField(label="NPM Mahasiswa (opsional, untuk sinkronisasi)", border_radius=8, visible=not is_login)
+    full_name_field = ft.TextField(
+        label="Nama Lengkap Mahasiswa (wajib)",
+        autofocus=is_mhs,
+        border_radius=8,
+        visible=is_mhs,
+    )
+    npm_field = ft.TextField(
+        label="NPM Mahasiswa (wajib)",
+        border_radius=8,
+        visible=is_mhs,
+    )
+    username = ft.TextField(
+        label=ID_LABEL[role],
+        autofocus=not is_mhs,
+        border_radius=8,
+        visible=not is_mhs,
+    )
     password = ft.TextField(label="Password", password=True, can_reveal_password=True, border_radius=8)
     confirm = ft.TextField(label="Konfirmasi Password", password=True, can_reveal_password=True,
                            border_radius=8, visible=not is_login)
@@ -61,22 +76,30 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
 
     def submit(e=None):
         if is_login:
-            ok, msg, user = auth.login(username.value, password.value, expected_role=role)
+            if is_mhs:
+                ok, msg, user = auth.login(
+                    npm_field.value,
+                    password.value,
+                    expected_role="mahasiswa",
+                    npm=npm_field.value,
+                    full_name=full_name_field.value,
+                )
+            else:
+                ok, msg, user = auth.login(username.value, password.value, expected_role=role)
             if ok:
                 if on_login_success:
                     on_login_success(user)
             else:
                 show_error(msg)
         else:
-            npm_clean = (npm_field.value or "").strip()
-            if npm_clean:
-                ok_npm, msg_npm = auth.validate_npm(npm_clean, exclude_username=(username.value or "").strip())
-                if not ok_npm:
-                    show_error(msg_npm)
-                    return
-            ok, msg = auth.register(username.value, password.value, confirm.value)
-            if ok and npm_clean:
-                auth.set_user_npm((username.value or "").strip(), npm_clean)
+            ok, msg = auth.register(
+                npm_field.value,
+                password.value,
+                confirm.value,
+                npm=npm_field.value,
+                full_name=full_name_field.value,
+                require_identity=True,
+            )
             if ok:
                 page.show_snack(msg)
                 if on_switch_mode:
@@ -84,8 +107,9 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
             else:
                 show_error(msg)
 
-    username.on_submit = submit
+    full_name_field.on_submit = submit
     npm_field.on_submit = submit
+    username.on_submit = submit
     password.on_submit = submit
     confirm.on_submit = submit
 
@@ -127,10 +151,10 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
         content=ft.Column([
             *([selector] if is_login else []),
             title,
-            ft.Text(HINT[role] if is_login else "Buat akun baru. Password minimal 8 karakter (huruf dan angka).",
+            ft.Text(HINT[role] if is_login else "Isi nama lengkap dan NPM Anda. Password minimal 8 karakter (huruf dan angka).",
                     size=13, color=ft.colors.ON_SURFACE_VARIANT),
             ft.Container(height=5),
-            username, npm_field, password, confirm, message,
+            full_name_field, npm_field, username, password, confirm, message,
             ft.ElevatedButton("Login" if is_login else "Daftar", bgcolor=GREEN, color=ft.colors.WHITE, on_click=submit),
             *switch_controls,
             ft.TextButton("❮ Kembali ke Beranda", on_click=lambda e: on_back() if on_back else None),

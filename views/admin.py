@@ -216,7 +216,7 @@ def _tab_report(page, user, mobile, refresh):
         for r in base_rows:
             if rf in ("mahasiswa", "dosen") and r["role"] != rf:
                 continue
-            if kw and kw not in r["username"].lower() and kw not in (r.get("npm") or "").lower() and kw not in r["role"].lower():
+            if kw and kw not in r["username"].lower() and kw not in (r.get("npm") or "").lower() and kw not in (r.get("full_name") or "").lower() and kw not in r["role"].lower():
                 continue
             filtered.append(r)
         sort_fn = reports.SORT_KEYS.get(st["sort"], reports.SORT_KEYS["persen"])
@@ -225,9 +225,10 @@ def _tab_report(page, user, mobile, refresh):
         for r in rows[:50]:
             is_dsn = r["role"] == "dosen"
             role_badge = chip("DOSEN", "#DBEAFE") if is_dsn else chip("MAHASISWA", "#FFF4A3")
+            disp_name = f"{r['full_name']} ({r['username']})" if r.get("full_name") and r["full_name"].lower() != r["username"].lower() else (r.get("full_name") or r["username"])
             badges = [
-                user_avatar_badge(r["username"], r.get("avatar", ""), size=34),
-                ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                user_avatar_badge(r.get("full_name") or r["username"], r.get("avatar", ""), size=34),
+                ft.Text(disp_name, size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
                 role_badge,
             ]
             if r.get("npm"):
@@ -344,11 +345,13 @@ def _tab_users(page, user, mobile, refresh):
                      ft.ElevatedButton("Hapus", bgcolor="#E53935", color=ft.colors.WHITE, on_click=go)])
 
         is_self = name.lower() == user["username"].lower()
+        disp_user = f"{u['full_name']} ({name})" if u.get("full_name") and u["full_name"].lower() != name.lower() else (u.get("full_name") or name)
         rows.append(glass_card(ft.Column([
             ft.Row([
-                user_avatar_badge(name, u.get("avatar", ""), size=34),
-                ft.Text(name, size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                user_avatar_badge(u.get("full_name") or name, u.get("avatar", ""), size=34),
+                ft.Text(disp_user, size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
                 chip(u["role"].upper()),
+                *([chip(u["npm"], "#E5E7EB")] if u.get("npm") else []),
                 *([chip("wajib ganti password", "#FFE0B2")] if u["must_change"] else []),
                 ft.Text(f"sejak {u['created_at']}", size=12, color=TEXT_MUTED),
             ], wrap=True, spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),

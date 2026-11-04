@@ -276,6 +276,9 @@ def user_avatar_badge(username: str, avatar_str: str = "", size: int = 38, on_cl
 def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actions: list, on_avatar_click=None, col=None) -> ft.Container:
     """Sidebar kiri bergaya ModyLearn dengan logo di atas, menu di tengah, dan kartu profil di bawah."""
     role_upper = (user.get("role") or "mahasiswa").upper()
+    npm_val = (user.get("npm") or "").strip()
+    role_sub = f"{role_upper} • {npm_val}" if npm_val else role_upper
+    display_name = (user.get("full_name") or "").strip() or user.get("username", "")
     avatar_data = user.get("avatar") or ""
 
     brand = ft.Container(
@@ -323,15 +326,15 @@ def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actio
                 ft.Row(
                     [
                         user_avatar_badge(
-                            user.get("username", ""),
+                            display_name,
                             avatar_data,
                             size=42,
                             on_click=(lambda e: on_avatar_click()) if on_avatar_click else None,
                         ),
                         ft.Column(
                             [
-                                ft.Text(user.get("username", ""), size=13, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-                                ft.Text(role_upper, size=10, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
+                                ft.Text(display_name, size=13, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                                ft.Text(role_sub, size=10, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
                             ],
                             spacing=0,
                             expand=True,

@@ -375,6 +375,18 @@ UI_PAIRS = [
     ("Waktu Pengerjaan Quiz (10 Menit)", "Quiz Time Limit (10 Minutes)"),
     ("⏰ Waktu habis! (00:00)", "⏰ Time is up! (00:00)"),
     ("⏰ Waktu habis (10 menit)! Jawaban Anda dinilai otomatis.", "⏰ Time is up (10 minutes)! Your answers have been graded automatically."),
+    ("Nama Lengkap Mahasiswa (wajib)", "Student Full Name (required)"),
+    ("NPM Mahasiswa (wajib)", "Student ID / NPM (required)"),
+    ("Masukkan nama lengkap, NPM, dan password Anda.", "Enter your full name, Student ID (NPM), and password."),
+    ("Isi nama lengkap dan NPM Anda. Password minimal 8 karakter (huruf dan angka).", "Enter your full name and Student ID (NPM). Password at least 8 characters (letters and numbers)."),
+    ("Nama lengkap dan NPM mahasiswa wajib diisi.", "Student full name and ID (NPM) are required."),
+    ("Nama lengkap mahasiswa wajib diisi (minimal 3 karakter).", "Student full name is required (at least 3 characters)."),
+    ("Nama lengkap maksimal 60 karakter.", "Full name cannot exceed 60 characters."),
+    ("NPM mahasiswa wajib diisi.", "Student ID (NPM) is required."),
+    ("NPM harus 4-20 karakter (huruf atau angka).", "Student ID (NPM) must be 4-20 characters (letters or numbers)."),
+    ("NPM sudah terdaftar pada akun lain.", "Student ID (NPM) is already registered to another account."),
+    ("Nama lengkap tidak sesuai dengan data NPM tersebut.", "Full name does not match the registered Student ID (NPM)."),
+    ("NPM tidak sesuai dengan akun mahasiswa ini.", "Student ID (NPM) does not match this student account."),
 ]
 
 # Pola untuk teks dinamis: "{}" mewakili nilai. Urutan "{}" di kedua sisi harus sama.
@@ -476,6 +488,7 @@ UI_PATTERNS = [
     ("{} soal. Lulus bila nilai minimal {}%.", "{} questions. Pass with a score of at least {}%."),
     ("{} soal. Waktu 10 menit. Lulus bila nilai minimal {}%.", "{} questions. 10 minutes limit. Pass with a score of at least {}%."),
     ("⏱️ Sisa waktu: {}:{}", "⏱️ Time remaining: {}:{}"),
+    ("akun mahasiswa baru ({})", "new student account ({})"),
     ("✓ Selesai ({} / 10:00)", "✓ Finished ({} / 10:00)"),
     ("⏱️ Waktu pengerjaan: {} dari 10:00", "⏱️ Time taken: {} of 10:00"),
     ("{} {} - Ringkasan Sintaks", "{} {} - Cheat Sheet"),

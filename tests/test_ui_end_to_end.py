@@ -229,12 +229,34 @@ class TestEndToEndUI(unittest.TestCase):
             progress.toggle_done("dosen_test", mod_ids[0])
             progress.toggle_done("dosen_test", mod_ids[1])
 
-            # 1. Login sebagai Mahasiswa menggunakan NPM, kerjakan Quiz Python sampai lulus, cek Sertifikat & Diskusi
+            # 1. Login sebagai Mahasiswa menggunakan Nama Lengkap & NPM, kerjakan Quiz sampai lulus, cek Sertifikat & Diskusi
             login_btns = find_buttons(page.appbar, "Masuk")
             login_btns[0].on_click(DummyEvent(login_btns[0]))
+            # Uji validasi wajib Nama Lengkap & NPM saat Login Mahasiswa
             tfs = [c for c in walk_controls(page.controls[1]) if isinstance(c, ft.TextField) and getattr(c, "visible", True) is not False]
-            tfs[0].value = "50421001"
-            tfs[1].value = "Rahasia123"
+            tfs[0].value = ""
+            tfs[1].value = "50421001"
+            tfs[2].value = "Rahasia123"
+            submit_btns = [b for b in find_buttons(page.controls[1], "Masuk") if isinstance(b, ft.ElevatedButton)]
+            submit_btns[0].on_click(DummyEvent(submit_btns[0]))
+            self.assertIsNotNone(find_buttons(page.controls[1], "Belum punya akun"))  # masih di halaman login karena nama lengkap kosong
+
+            # Uji halaman Daftar Akun Mahasiswa (wajib Nama Lengkap & NPM)
+            reg_switch_btns = find_buttons(page.controls[1], "Belum punya akun")
+            reg_switch_btns[0].on_click(DummyEvent(reg_switch_btns[0]))
+            reg_tfs = [c for c in walk_controls(page.controls[1]) if isinstance(c, ft.TextField) and getattr(c, "visible", True) is not False]
+            reg_tfs[0].value = "Siti Aminah"
+            reg_tfs[1].value = "50421002"
+            reg_tfs[2].value = "Rahasia123"
+            reg_tfs[3].value = "Rahasia123"
+            reg_submit = [b for b in find_buttons(page.controls[1], "Daftar") if isinstance(b, ft.ElevatedButton)]
+            reg_submit[0].on_click(DummyEvent(reg_submit[0]))
+
+            # Sekarang login dengan Nama Lengkap + NPM
+            tfs = [c for c in walk_controls(page.controls[1]) if isinstance(c, ft.TextField) and getattr(c, "visible", True) is not False]
+            tfs[0].value = "Budi Santoso"
+            tfs[1].value = "50421001"
+            tfs[2].value = "Rahasia123"
             submit_btns = [b for b in find_buttons(page.controls[1], "Masuk") if isinstance(b, ft.ElevatedButton)]
             submit_btns[0].on_click(DummyEvent(submit_btns[0]))
 

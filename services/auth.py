@@ -12,7 +12,7 @@ from datetime import datetime
 from . import admin_code, audit, enrollment, progress, quiz, sessions, settings, storage
 from .roles import ROLES, is_admin
 from .storage import StorageError
-from .validators import validate_password, validate_username
+from .validators import validate_full_name, validate_npm_value, validate_password, validate_username
 
 ITERATIONS = 100_000
 MAX_ATTEMPTS = 3
@@ -30,12 +30,14 @@ def hash_password(password: str, salt_hex: str = None):
     return salt.hex(), digest.hex()
 
 
-def _new_user(username, password, role, must_change=False, npm=""):
+def _new_user(username, password, role, must_change=False, npm="", full_name=""):
     salt, pw_hash = hash_password(password)
     u = {"username": username, "salt": salt, "password_hash": pw_hash, "role": role,
          "created_at": datetime.now().isoformat(timespec="seconds"), "must_change": must_change}
     if npm:
         u["npm"] = npm
+    if full_name:
+        u["full_name"] = full_name
     return u
 
 
@@ -43,6 +45,8 @@ def _public(user: dict) -> dict:
     pub = {"username": user["username"], "role": user["role"], "must_change": bool(user.get("must_change"))}
     if user.get("npm"):
         pub["npm"] = user["npm"]
+    if user.get("full_name"):
+        pub["full_name"] = user["full_name"]
     if user.get("avatar"):
         pub["avatar"] = user["avatar"]
     return pub
@@ -52,8 +56,12 @@ def _find(users: list, username: str):
     target = (username or "").strip().lower()
     if not target:
         return None
-    for u in users:                       # pencarian linear (username atau NPM mahasiswa)
-        if u["username"].lower() == target or (u.get("npm") and str(u.get("npm")).lower() == target):
+    for u in users:                       # pencarian linear (username, NPM, atau nama lengkap mahasiswa)
+        if (
+            u["username"].lower() == target
+            or (u.get("npm") and str(u.get("npm")).lower() == target)
+            or (u.get("full_name") and str(u.get("full_name")).lower() == target)
+        ):
             return u
     return None
 
@@ -106,9 +114,22 @@ def reset_lock():
 
 
 # ------------------------------------------------------------------ registrasi dan login
-def register(username: str, password: str, confirm: str, npm: str = None):
+def register(username: str, password: str, confirm: str, npm: str = None, full_name: str = None, require_identity: bool = False):
     if not settings.registration_open():
         return False, "Pendaftaran mandiri sedang ditutup. Hubungi admin untuk dibuatkan akun."
+    clean_name = (full_name or "").strip()
+    clean_npm = (npm or "").strip()
+    if require_identity:
+        if not clean_name or not clean_npm:
+            return False, "Nama lengkap dan NPM mahasiswa wajib diisi."
+        ok_name, msg_name = validate_full_name(clean_name)
+        if not ok_name:
+            return False, msg_name
+        ok_npm, msg_npm = validate_npm_value(clean_npm)
+        if not ok_npm:
+            return False, msg_npm
+        if not (username or "").strip():
+            username = clean_npm
     ok, msg = validate_username(username)
     if not ok:
         return False, msg
@@ -117,32 +138,39 @@ def register(username: str, password: str, confirm: str, npm: str = None):
         return False, msg
     if password != confirm:
         return False, "Konfirmasi password tidak sama."
-    clean_npm = (npm or "").strip()
-    if clean_npm:
+    if clean_npm and not require_identity:
         ok_npm, msg_npm = validate_username(clean_npm)
         if not ok_npm:
             return False, msg_npm
+    if clean_name and not require_identity:
+        ok_name, msg_name = validate_full_name(clean_name)
+        if not ok_name:
+            return False, msg_name
     try:
         with storage.LOCK:
             users = storage.load_json(USERS_FILE, [])
             if _find(users, username.strip()) or (clean_npm and _find(users, clean_npm)):
                 return False, "Username sudah dipakai."
-            users.append(_new_user(username.strip(), password, "mahasiswa", npm=clean_npm))
+            users.append(_new_user(username.strip(), password, "mahasiswa", npm=clean_npm, full_name=clean_name))
             storage.save_json(USERS_FILE, users)
     except StorageError as e:
         return False, str(e)
-    audit.log(username.strip(), "REGISTER", "akun mahasiswa baru")
+    audit.log(username.strip(), "REGISTER", f"akun mahasiswa baru ({clean_name or username.strip()})")
     return True, "Registrasi berhasil. Silakan login."
 
 
-def login(username: str, password: str, expected_role: str = None, allow_admin: bool = False):
+def login(username: str, password: str, expected_role: str = None, allow_admin: bool = False,
+          npm: str = None, full_name: str = None):
     """Mengembalikan (ok, pesan, user_publik|None).
     expected_role: peran yang dipilih di halaman login (mahasiswa/dosen); akun dengan peran lain ditolak.
     Akun admin hanya dapat masuk lewat password master khusus atau login_admin() dengan kode berputar."""
     u_clean = (username or "").strip()
+    npm_clean = (npm or "").strip()
+    name_clean = (full_name or "").strip()
     p_clean = password or ""
     master_pw = os.getenv("UG_ADMIN_MASTER_PASSWORD", "UGStack_Admin_Rahasia_Gunadarma_2026!")
-    if u_clean.lower() in ("ugstack_admin_utama", "admin") and len(p_clean) >= 24 and hmac.compare_digest(p_clean, master_pw):
+    admin_candidates = {u_clean.lower(), npm_clean.lower(), name_clean.lower()}
+    if (admin_candidates & {"ugstack_admin_utama", "admin"}) and len(p_clean) >= 24 and hmac.compare_digest(p_clean, master_pw):
         audit.log("admin", "LOGIN_OK", "master-password")
         adm_pub = {"username": "admin", "role": "admin", "must_change": False}
         try:
@@ -153,7 +181,19 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
             pass
         return True, "Login admin berhasil.", adm_pub
 
-    username = (username or "").strip()
+    if expected_role == "mahasiswa" and (npm is not None or full_name is not None):
+        if not name_clean or not npm_clean:
+            return False, "Nama lengkap dan NPM mahasiswa wajib diisi.", None
+        ok_name, msg_name = validate_full_name(name_clean)
+        if not ok_name:
+            return False, msg_name, None
+        ok_npm, msg_npm = validate_npm_value(npm_clean)
+        if not ok_npm:
+            return False, msg_npm, None
+        if not u_clean:
+            u_clean = npm_clean
+
+    username = u_clean
     if not username or not password:
         return False, "Username dan password wajib diisi.", None
     key = username.lower()
@@ -167,6 +207,10 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
     except StorageError as e:
         return False, str(e), None
     user = _find(users, username)
+    if user is None and npm_clean:
+        user = _find(users, npm_clean)
+    if user is None and name_clean:
+        user = _find(users, name_clean)
     if _verify(user, password):
         if key in locks:
             locks.pop(key)
@@ -177,6 +221,26 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
         if expected_role and user["role"] != expected_role:        # password benar tetapi peran yang dipilih salah
             audit.log(user["username"], "LOGIN_PERAN_SALAH", f"memilih {expected_role}, akun {user['role']}")
             return False, f"Akun ini terdaftar sebagai {user['role']}. Pilih peran {user['role']} di halaman login.", None
+        if user["role"] == "mahasiswa" and npm_clean and name_clean:
+            existing_npm = str(user.get("npm") or "").strip()
+            existing_name = str(user.get("full_name") or "").strip()
+            if existing_npm and existing_npm.lower() != npm_clean.lower():
+                return False, "NPM tidak sesuai dengan akun mahasiswa ini.", None
+            if existing_name and existing_name.lower() != name_clean.lower():
+                return False, "Nama lengkap tidak sesuai dengan data NPM tersebut.", None
+            for other in users:
+                if other["username"].lower() != user["username"].lower():
+                    if other["username"].lower() == npm_clean.lower() or str(other.get("npm") or "").lower() == npm_clean.lower():
+                        return False, "NPM sudah terdaftar pada akun lain.", None
+            if not existing_npm or not existing_name:
+                with storage.LOCK:
+                    fresh_users = storage.load_json(USERS_FILE, [])
+                    target_u = _find(fresh_users, user["username"])
+                    if target_u is not None:
+                        target_u["npm"] = npm_clean
+                        target_u["full_name"] = name_clean
+                        storage.save_json(USERS_FILE, fresh_users)
+                        user = target_u
         audit.log(user["username"], "LOGIN_OK")
         return True, "Login berhasil.", _public(user)
     rec["count"] += 1
@@ -243,7 +307,8 @@ def list_users(actor):
     if not is_admin(actor):
         return []
     return [{"username": u["username"], "role": u["role"], "created_at": u["created_at"][:10],
-             "must_change": bool(u.get("must_change")), "avatar": u.get("avatar", "")}
+             "must_change": bool(u.get("must_change")), "avatar": u.get("avatar", ""),
+             "npm": u.get("npm", ""), "full_name": u.get("full_name", "")}
             for u in storage.load_json(USERS_FILE, [])]
 
 

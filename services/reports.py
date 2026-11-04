@@ -77,7 +77,8 @@ def progress_overview(actor, keyword: str = "", sort_by: str = "persen",
             continue
         name = user["username"]
         npm = str(user.get("npm") or "").strip()
-        if kw and kw not in name.lower() and kw not in npm.lower() and kw not in role.lower():
+        full_name = str(user.get("full_name") or "").strip()
+        if kw and kw not in name.lower() and kw not in npm.lower() and kw not in full_name.lower() and kw not in role.lower():
             continue
         done = [i for i in module_ids if i in done_by_user.get(name, [])]
         done_titles = [m["judul"] for m in all_modules if m["id"] in done]
@@ -94,6 +95,7 @@ def progress_overview(actor, keyword: str = "", sort_by: str = "persen",
             pct = mod_pct
         rows.append({
             "username": name,
+            "full_name": full_name,
             "role": role,
             "npm": npm,
             "avatar": user.get("avatar", ""),

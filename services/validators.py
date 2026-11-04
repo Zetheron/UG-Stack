@@ -14,6 +14,24 @@ def validate_username(username: str):
     return True, ""
 
 
+def validate_full_name(full_name: str):
+    clean = (full_name or "").strip()
+    if len(clean) < 3:
+        return False, "Nama lengkap mahasiswa wajib diisi (minimal 3 karakter)."
+    if len(clean) > 60:
+        return False, "Nama lengkap maksimal 60 karakter."
+    return True, ""
+
+
+def validate_npm_value(npm: str):
+    clean = (npm or "").strip()
+    if not clean:
+        return False, "NPM mahasiswa wajib diisi."
+    if not _USERNAME_RE.match(clean):
+        return False, "NPM harus 4-20 karakter (huruf atau angka)."
+    return True, ""
+
+
 def validate_password(password: str):
     if not password:
         return False, "Password tidak boleh kosong."
