@@ -126,6 +126,7 @@ def main(page: ft.Page):
         restored_user = None
 
     def show_snack(msg):
+        page.overlay[:] = [c for c in page.overlay if not isinstance(c, ft.SnackBar)]
         snack = ft.SnackBar(content=ft.Text(msg), show_close_icon=True)
         page.overlay.append(snack)
         snack.open = True

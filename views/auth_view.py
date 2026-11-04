@@ -68,9 +68,15 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
             else:
                 show_error(msg)
         else:
+            npm_clean = (npm_field.value or "").strip()
+            if npm_clean:
+                ok_npm, msg_npm = auth.validate_npm(npm_clean, exclude_username=(username.value or "").strip())
+                if not ok_npm:
+                    show_error(msg_npm)
+                    return
             ok, msg = auth.register(username.value, password.value, confirm.value)
-            if ok and (npm_field.value or "").strip():
-                auth.set_user_npm((username.value or "").strip(), npm_field.value)
+            if ok and npm_clean:
+                auth.set_user_npm((username.value or "").strip(), npm_clean)
             if ok:
                 page.show_snack(msg)
                 if on_switch_mode:
@@ -78,7 +84,10 @@ def get_auth_view(page: ft.Page, mode="login", role="mahasiswa", on_login_succes
             else:
                 show_error(msg)
 
-    (password if is_login else confirm).on_submit = submit
+    username.on_submit = submit
+    npm_field.on_submit = submit
+    password.on_submit = submit
+    confirm.on_submit = submit
 
     def role_button(key, label):
         active = key == role

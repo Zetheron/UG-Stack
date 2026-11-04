@@ -105,13 +105,19 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
                 kpi_glow_card("SERTIFIKAT TERBIT", str(sm["passed"]), ft.icons.WORKSPACE_PREMIUM_ROUNDED, "#EC4899", "🏅 Sertifikat"),
                 kpi_glow_card("SKOR RATA-RATA", f"{pct:.0f}%", ft.icons.STAR_ROUNDED, "#EAB308", "Skor"),
             ]
+            outline_style = ft.ButtonStyle(
+                color=TEXT_PRIMARY,
+                side=ft.BorderSide(1, BORDER_SUBTLE),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            )
             extra = [ft.Text(f"🏅 Sertifikat: {sm['passed']}  •  Quiz dicoba: {sm['attempted']}", size=13, color=TEXT_MUTED)]
             if nxt and next_lang:
                 extra.append(ft.Row([ft.Text("Lanjutkan belajar:", size=13, color=TEXT_MUTED),
-                                     ft.OutlinedButton(f"{nxt['judul']} ❯", on_click=lambda e, k=next_lang["key"]: on_open_lang(k) if on_open_lang else None)],
+                                     ft.OutlinedButton(f"{nxt['judul']} ❯", style=outline_style,
+                                                       on_click=lambda e, k=next_lang["key"]: on_open_lang(k) if on_open_lang else None)],
                                     wrap=True, spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER))
             if weak_lang:
-                extra.append(ft.OutlinedButton(f"Ulangi quiz {weak_lang['name']} ❯",
+                extra.append(ft.OutlinedButton(f"Ulangi quiz {weak_lang['name']} ❯", style=outline_style,
                                                on_click=lambda e, k=weak_lang["key"]: on_quiz(k) if on_quiz else None))
             summary.controls = [
                 ft.Text("Progres Belajar Anda", weight=ft.FontWeight.BOLD, size=16, color=TEXT_PRIMARY),
@@ -119,7 +125,8 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
                 ft.Text(f"{pct:.0f}% — {n} dari {len(ids)} modul selesai", size=13, color=TEXT_MUTED),
                 ft.Divider(height=8, color=BORDER_SUBTLE),
                 *extra,
-                ft.Row([ft.OutlinedButton("Quiz & sertifikat", on_click=lambda e: on_nav("exercises") if on_nav else None)],
+                ft.Row([ft.OutlinedButton("Quiz & sertifikat", style=outline_style,
+                                          on_click=lambda e: on_nav("exercises") if on_nav else None)],
                        wrap=True, spacing=6, run_spacing=6),
             ]
 

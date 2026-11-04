@@ -1,7 +1,10 @@
 import flet as ft
 
 from components.dashboard_theme import (
+    BG_CARD,
+    BG_CARD_ALT,
     BG_MAIN,
+    BORDER_SUBTLE,
     TEXT_MUTED,
     TEXT_PRIMARY,
     activity_trend_card,
@@ -76,8 +79,31 @@ def get_admin_view(page: ft.Page, user: dict, tab: str, mobile: bool, on_tab, on
     )
 
 
+def _dark_heading(text: str) -> ft.Text:
+    return ft.Text(text, size=19, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY)
+
+
+def _dark_outlined_btn(text: str, on_click, disabled: bool = False) -> ft.OutlinedButton:
+    return ft.OutlinedButton(
+        text,
+        disabled=disabled,
+        style=ft.ButtonStyle(
+            color=TEXT_PRIMARY if not disabled else TEXT_MUTED,
+            side=ft.BorderSide(1, BORDER_SUBTLE),
+            shape=ft.RoundedRectangleBorder(radius=8),
+        ),
+        on_click=on_click,
+    )
+
+
 def _dialog(page, title, content, actions):
-    page.dialog = ft.AlertDialog(modal=True, title=ft.Text(title), content=content, actions=actions)
+    page.dialog = ft.AlertDialog(
+        modal=True,
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Text(title, weight=ft.FontWeight.BOLD),
+        content=content,
+        actions=actions,
+    )
     page.dialog.open = True
     page.update()
 
@@ -163,7 +189,7 @@ def _tab_report(page, user, mobile, refresh):
     st = {"kw": "", "role": "semua", "sort": "persen", "desc": True}
     list_box = ft.Column(spacing=10)
     summary_row = ft.ResponsiveRow(spacing=12, run_spacing=12)
-    count = ft.Text("", size=13, color=ft.colors.ON_SURFACE_VARIANT)
+    count = ft.Text("", size=13, color=TEXT_MUTED)
 
     def load(update=True):
         all_mhs = reports.progress_overview(user, role_filter="mahasiswa")
@@ -171,16 +197,16 @@ def _tab_report(page, user, mobile, refresh):
         avg_mhs = sum(r["percent"] for r in all_mhs) / len(all_mhs) if all_mhs else 0.0
         avg_dsn = sum(r["percent"] for r in all_dsn) / len(all_dsn) if all_dsn else 0.0
         summary_row.controls = [
-            card(ft.Column([
-                ft.Text("🎓 Ringkasan Progres Mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE),
-                ft.Text(f"{len(all_mhs)} mahasiswa  •  rata-rata progres {avg_mhs:.0f}%", size=13, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.ProgressBar(value=avg_mhs / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
-            ], spacing=6), col={"xs": 12, "md": 6}, padding=14),
-            card(ft.Column([
-                ft.Text("👨‍🏫 Ringkasan Progres Dosen", weight=ft.FontWeight.BOLD, size=14, color=ft.colors.ON_SURFACE),
-                ft.Text(f"{len(all_dsn)} dosen  •  rata-rata progres {avg_dsn:.0f}%", size=13, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.ProgressBar(value=avg_dsn / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
-            ], spacing=6), col={"xs": 12, "md": 6}, padding=14),
+            glass_card(ft.Column([
+                ft.Text("🎓 Ringkasan Progres Mahasiswa", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
+                ft.Text(f"{len(all_mhs)} mahasiswa  •  rata-rata progres {avg_mhs:.0f}%", size=13, color=TEXT_MUTED),
+                ft.ProgressBar(value=avg_mhs / 100, color="#10B981", bgcolor=BORDER_SUBTLE, height=8),
+            ], spacing=6), col={"xs": 12, "md": 6}, padding=16),
+            glass_card(ft.Column([
+                ft.Text("👨‍🏫 Ringkasan Progres Dosen", weight=ft.FontWeight.BOLD, size=14, color=TEXT_PRIMARY),
+                ft.Text(f"{len(all_dsn)} dosen  •  rata-rata progres {avg_dsn:.0f}%", size=13, color=TEXT_MUTED),
+                ft.ProgressBar(value=avg_dsn / 100, color="#F59E0B", bgcolor=BORDER_SUBTLE, height=8),
+            ], spacing=6), col={"xs": 12, "md": 6}, padding=16),
         ]
 
         rows = reports.progress_overview(user, st["kw"], st["sort"], st["desc"], st["role"])
@@ -189,32 +215,32 @@ def _tab_report(page, user, mobile, refresh):
             is_dsn = r["role"] == "dosen"
             role_badge = chip("DOSEN", "#DBEAFE") if is_dsn else chip("MAHASISWA", "#FFF4A3")
             badges = [
-                user_avatar_badge(r["username"], r.get("avatar", ""), size=32),
-                ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+                user_avatar_badge(r["username"], r.get("avatar", ""), size=34),
+                ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
                 role_badge,
             ]
             if r.get("npm"):
-                badges.append(chip(r["npm"], "#F3F4F6"))
-            badges.append(chip(f"{r['percent']:.0f}%"))
+                badges.append(chip(r["npm"], "#E5E7EB"))
+            badges.append(chip(f"{r['percent']:.0f}%", "#D1FAE5"))
 
             metrics = [
-                ft.Text(f"{r['done']}/{r['total']} modul", size=12, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.Text(f"🏅 {r['passed']} sertifikat", size=12, color=ft.colors.ON_SURFACE_VARIANT),
-                ft.Text(f"Skor rata-rata {r['avg_best']:.0f}%", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                ft.Text(f"{r['done']}/{r['total']} modul", size=12, color=TEXT_MUTED),
+                ft.Text(f"🏅 {r['passed']} sertifikat", size=12, color=TEXT_MUTED),
+                ft.Text(f"Skor rata-rata {r['avg_best']:.0f}%", size=12, color=TEXT_MUTED),
             ]
             if is_dsn or r["modules_managed"] or r["questions_added"]:
                 metrics.extend([
-                    ft.Text(f"📚 {r['modules_managed']} aksi modul", size=12, color=ft.colors.ON_SURFACE_VARIANT),
-                    ft.Text(f"📝 {r['questions_added']} aksi soal", size=12, color=ft.colors.ON_SURFACE_VARIANT),
-                    ft.Text(f"⚡ {r['total_actions']} aktivitas", size=12, color=ft.colors.ON_SURFACE_VARIANT),
+                    ft.Text(f"📚 {r['modules_managed']} aksi modul", size=12, color=TEXT_MUTED),
+                    ft.Text(f"📝 {r['questions_added']} aksi soal", size=12, color=TEXT_MUTED),
+                    ft.Text(f"⚡ {r['total_actions']} aktivitas", size=12, color=TEXT_MUTED),
                 ])
 
-            cards.append(card(ft.Column([
+            cards.append(glass_card(ft.Column([
                 ft.Row(badges, wrap=True, spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                ft.ProgressBar(value=r["percent"] / 100, color="#04AA6D", bgcolor=ft.colors.with_opacity(0.35, ft.colors.OUTLINE), height=8),
+                ft.ProgressBar(value=r["percent"] / 100, color="#10B981" if not is_dsn else "#F59E0B", bgcolor=BORDER_SUBTLE, height=8),
                 ft.Row(metrics, wrap=True, spacing=14),
-            ], spacing=6), padding=14))
-        list_box.controls = cards or [ft.Text("Belum ada pengguna yang cocok.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]
+            ], spacing=8), padding=16))
+        list_box.controls = cards or [ft.Text("Belum ada pengguna yang cocok.", size=13, color=TEXT_MUTED)]
         mhs_cnt = sum(1 for r in rows if r["role"] == "mahasiswa")
         dsn_cnt = sum(1 for r in rows if r["role"] == "dosen")
         count.value = f"{mhs_cnt} mahasiswa  •  {dsn_cnt} dosen"
@@ -238,19 +264,22 @@ def _tab_report(page, user, mobile, refresh):
         order_btn.icon = ft.icons.ARROW_DOWNWARD if st["desc"] else ft.icons.ARROW_UPWARD
         load()
 
-    order_btn = ft.IconButton(ft.icons.ARROW_DOWNWARD, tooltip="Naik / turun", on_click=on_order)
+    order_btn = ft.IconButton(ft.icons.ARROW_DOWNWARD, icon_color=TEXT_PRIMARY, tooltip="Naik / turun", on_click=on_order)
     toolbar = ft.ResponsiveRow([
-        ft.TextField(hint_text="Cari nama / NPM...", prefix_icon=ft.icons.SEARCH, on_change=on_filter, border_radius=8, col={"xs": 12, "md": 4}),
-        ft.Dropdown(label="Peran", value="semua", on_change=on_role, col={"xs": 6, "md": 3},
+        ft.TextField(hint_text="Cari nama / NPM...", prefix_icon=ft.icons.SEARCH, on_change=on_filter,
+                     bgcolor=BG_CARD, color=TEXT_PRIMARY, border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 12, "md": 4}),
+        ft.Dropdown(label="Peran", value="semua", on_change=on_role, bgcolor=BG_CARD, color=TEXT_PRIMARY,
+                    border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 6, "md": 3},
                     options=[ft.dropdown.Option(key="semua", text="Semua"),
                              ft.dropdown.Option(key="mahasiswa", text="🎓 Mahasiswa"),
                              ft.dropdown.Option(key="dosen", text="👨‍🏫 Dosen")]),
-        ft.Dropdown(label="Urutkan", value="persen", on_change=on_sort, col={"xs": 4, "md": 3},
+        ft.Dropdown(label="Urutkan", value="persen", on_change=on_sort, bgcolor=BG_CARD, color=TEXT_PRIMARY,
+                    border_color=BORDER_SUBTLE, border_radius=10, col={"xs": 4, "md": 3},
                     options=[ft.dropdown.Option(key="persen", text="Progres"), ft.dropdown.Option(key="nama", text="Nama"),
                              ft.dropdown.Option(key="sertifikat", text="Sertifikat"), ft.dropdown.Option(key="nilai", text="Skor")]),
         ft.Container(order_btn, col={"xs": 2, "md": 2})], vertical_alignment=ft.CrossAxisAlignment.CENTER)
     load(update=False)
-    return ft.Column([section_heading("Progres Mahasiswa & Dosen"), summary_row, toolbar, count, list_box], spacing=10)
+    return ft.Column([_dark_heading("Progres Mahasiswa & Dosen"), summary_row, toolbar, count, list_box], spacing=12)
 
 
 # ------------------------------------------------------------------ pengguna
@@ -260,8 +289,12 @@ def _tab_users(page, user, mobile, refresh):
         page.show_snack(msg)
         refresh()
 
-    reg_switch = ft.Switch(label="Pendaftaran mandiri dibuka (mahasiswa boleh mendaftar sendiri)",
-                           value=settings.registration_open(), on_change=on_toggle_registration)
+    reg_switch = ft.Switch(
+        label="Pendaftaran mandiri dibuka (mahasiswa boleh mendaftar sendiri)",
+        value=settings.registration_open(),
+        active_color="#10B981",
+        on_change=on_toggle_registration,
+    )
     rows = []
     for u in auth.list_users(user):
         name = u["username"]
@@ -300,26 +333,41 @@ def _tab_users(page, user, mobile, refresh):
                      ft.ElevatedButton("Hapus", bgcolor="#E53935", color=ft.colors.WHITE, on_click=go)])
 
         is_self = name.lower() == user["username"].lower()
-        rows.append(card(ft.Column([
-            ft.Row([ft.Text(name, size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE), chip(u["role"].upper()),
-                    *([chip("wajib ganti password", "#FFE0B2")] if u["must_change"] else []),
-                    ft.Text(f"sejak {u['created_at']}", size=12, color=ft.colors.ON_SURFACE_VARIANT)], wrap=True, spacing=8),
-            ft.Row([ft.Dropdown(label="Peran", value=u["role"], width=170, on_change=change_role,
-                                options=[ft.dropdown.Option(r, r) for r in ROLES]),
-                    ft.OutlinedButton("Atur ulang password", on_click=reset),
-                    ft.OutlinedButton("Hapus", on_click=delete, disabled=is_self)],
-                   wrap=True, spacing=8, run_spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER)], spacing=8)))
-    return ft.Column([section_heading("Pengaturan"), card(reg_switch),
-                      section_heading(f"Daftar akun ({len(rows)})"), *rows], spacing=10)
+        rows.append(glass_card(ft.Column([
+            ft.Row([
+                user_avatar_badge(name, u.get("avatar", ""), size=34),
+                ft.Text(name, size=16, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                chip(u["role"].upper()),
+                *([chip("wajib ganti password", "#FFE0B2")] if u["must_change"] else []),
+                ft.Text(f"sejak {u['created_at']}", size=12, color=TEXT_MUTED),
+            ], wrap=True, spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Row([
+                ft.Dropdown(label="Peran", value=u["role"], width=170, bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                            border_color=BORDER_SUBTLE, border_radius=8, on_change=change_role,
+                            options=[ft.dropdown.Option(r, r) for r in ROLES]),
+                _dark_outlined_btn("Atur ulang password", reset),
+                _dark_outlined_btn("Hapus", delete, disabled=is_self),
+            ], wrap=True, spacing=8, run_spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ], spacing=10), padding=16))
+    return ft.Column([
+        _dark_heading("Pengaturan"),
+        glass_card(reg_switch, padding=16),
+        _dark_heading(f"Daftar akun ({len(rows)})"),
+        *rows,
+    ], spacing=12)
 
 
 # ------------------------------------------------------------------ buat akun (tunggal dan massal)
 def _tab_accounts(page, user, mobile, refresh):
-    username = ft.TextField(label="Username (4-20 huruf/angka/_)", color=ft.colors.ON_SURFACE)
-    role = ft.Dropdown(label="Peran", value="mahasiswa", options=[ft.dropdown.Option(r, r) for r in ROLES])
+    username = ft.TextField(label="Username (4-20 huruf/angka/_)", bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                            border_color=BORDER_SUBTLE, border_radius=10)
+    role = ft.Dropdown(label="Peran", value="mahasiswa", bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                       border_color=BORDER_SUBTLE, border_radius=10,
+                       options=[ft.dropdown.Option(r, r) for r in ROLES])
     password = ft.TextField(label="Password sementara (kosongkan = dibuat otomatis)", password=True,
-                            can_reveal_password=True, color=ft.colors.ON_SURFACE)
-    err = ft.Text("", color=ft.colors.RED_700, size=13)
+                            can_reveal_password=True, bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                            border_color=BORDER_SUBTLE, border_radius=10)
+    err = ft.Text("", color="#F87171", size=13)
     result = ft.Column(spacing=6)
 
     def create(e):
@@ -335,24 +383,25 @@ def _tab_accounts(page, user, mobile, refresh):
         def copy(e2):
             page.set_clipboard(line)
             page.show_snack("Data akun disalin.")
-        result.controls = [card(ft.Column([
-            ft.Text(msg, size=13, color="#1B7F3B"),
-            ft.Text(line, size=13, selectable=True, color=ft.colors.ON_SURFACE, weight=ft.FontWeight.BOLD),
-            ft.Row([ft.OutlinedButton("Salin", on_click=copy)]),
-            ft.Text("Pengguna wajib mengganti password ini saat pertama login.", size=12, color=ft.colors.ON_SURFACE_VARIANT)],
-            spacing=6), bg=ft.colors.PRIMARY_CONTAINER)]
+        result.controls = [glass_card(ft.Column([
+            ft.Text(msg, size=13, color="#34D399"),
+            ft.Text(line, size=13, selectable=True, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
+            ft.Row([_dark_outlined_btn("Salin", copy)]),
+            ft.Text("Pengguna wajib mengganti password ini saat pertama login.", size=12, color=TEXT_MUTED)],
+            spacing=6), padding=16)]
         username.value = ""
         password.value = ""
         page.update()
 
     batch = ft.TextField(label="Tempel CSV: kolom username dan role (opsional). Contoh:\nusername,role\nmhs_001,mahasiswa\ndosen_01,dosen",
-                         multiline=True, min_lines=5, max_lines=10, color=ft.colors.ON_SURFACE)
+                         multiline=True, min_lines=5, max_lines=10, bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                         border_color=BORDER_SUBTLE, border_radius=10)
     batch_result = ft.Column(spacing=6)
 
     def import_batch(e):
         ok, msg, rep = auth.import_users_csv(user, batch.value)
         if not ok:
-            batch_result.controls = [ft.Text(msg, size=13, color=ft.colors.RED_700)]
+            batch_result.controls = [ft.Text(msg, size=13, color="#F87171")]
             page.update()
             return
         lines = [f"{n},{r},{p}" for n, r, p in rep["created"]]
@@ -361,33 +410,40 @@ def _tab_accounts(page, user, mobile, refresh):
             page.set_clipboard("username,role,password_sementara\n" + "\n".join(lines))
             page.show_snack("Daftar akun dan password sementara disalin.")
         batch_result.controls = [
-            ft.Text(msg, size=13, color="#1B7F3B"),
-            *([ft.Container(padding=10, bgcolor=ft.colors.SURFACE_VARIANT, border_radius=8, content=ft.Text(
-                "\n".join(lines), size=12, font_family="monospace", selectable=True, color=ft.colors.ON_SURFACE)),
+            ft.Text(msg, size=13, color="#34D399"),
+            *([ft.Container(padding=10, bgcolor=BG_CARD_ALT, border_radius=8, content=ft.Text(
+                "\n".join(lines), size=12, font_family="monospace", selectable=True, color=TEXT_PRIMARY)),
                ft.Row([green_button("Salin semua (CSV)", copy_all)]),
-               ft.Text("Simpan daftar ini sekarang: password sementara tidak ditampilkan lagi.", size=12, color="#C62828")] if lines else []),
-            *[ft.Text(f"Baris {n}: {why}", size=12, color="#C62828") for n, why in rep["skipped"][:10]]]
+               ft.Text("Simpan daftar ini sekarang: password sementara tidak ditampilkan lagi.", size=12, color="#FBBF24")] if lines else []),
+            *[ft.Text(f"Baris {n}: {why}", size=12, color="#F87171") for n, why in rep["skipped"][:10]]]
         page.update()
 
     return ft.Column([
-        section_heading("Buat satu akun"),
-        card(ft.Column([username, role, password, err, green_button("Buat akun", create)], spacing=8)),
+        _dark_heading("Buat satu akun"),
+        glass_card(ft.Column([username, role, password, err, green_button("Buat akun", create)], spacing=10)),
         result,
-        section_heading("Buat banyak akun sekaligus (CSV)"),
-        card(ft.Column([ft.Text("Cocok untuk satu kelas: password sementara dibuat otomatis untuk setiap akun (maks. 100 per impor).",
-                                size=13, color=ft.colors.ON_SURFACE_VARIANT), batch, green_button("Buat akun massal", import_batch), batch_result],
-                       spacing=8)),
-    ], spacing=10)
+        _dark_heading("Buat banyak akun sekaligus (CSV)"),
+        glass_card(ft.Column([ft.Text("Cocok untuk satu kelas: password sementara dibuat otomatis untuk setiap akun (maks. 100 per impor).",
+                                      size=13, color=TEXT_MUTED), batch, green_button("Buat akun massal", import_batch), batch_result],
+                             spacing=10)),
+    ], spacing=12)
 
 
 # ------------------------------------------------------------------ soal quiz
 def _tab_questions(page, user, mobile, refresh):
-    lang_dd = ft.Dropdown(label="Bahasa", value="python", options=[ft.dropdown.Option(key=l["key"], text=l["name"]) for l in LANGS])
-    q = ft.TextField(label="Pertanyaan", multiline=True, min_lines=2, color=ft.colors.ON_SURFACE)
-    opts = [ft.TextField(label=f"Opsi {c}", color=ft.colors.ON_SURFACE) for c in "ABCD"]
-    correct = ft.Dropdown(label="Jawaban benar", value="0", options=[ft.dropdown.Option(key=str(i), text=c) for i, c in enumerate("ABCD")])
-    explain = ft.TextField(label="Penjelasan jawaban", color=ft.colors.ON_SURFACE)
-    err = ft.Text("", color=ft.colors.RED_700, size=13)
+    lang_dd = ft.Dropdown(label="Bahasa", value="python", bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                          border_color=BORDER_SUBTLE, border_radius=10,
+                          options=[ft.dropdown.Option(key=l["key"], text=l["name"]) for l in LANGS])
+    q = ft.TextField(label="Pertanyaan", multiline=True, min_lines=2, bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                     border_color=BORDER_SUBTLE, border_radius=10)
+    opts = [ft.TextField(label=f"Opsi {c}", bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                         border_color=BORDER_SUBTLE, border_radius=10) for c in "ABCD"]
+    correct = ft.Dropdown(label="Jawaban benar", value="0", bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                          border_color=BORDER_SUBTLE, border_radius=10,
+                          options=[ft.dropdown.Option(key=str(i), text=c) for i, c in enumerate("ABCD")])
+    explain = ft.TextField(label="Penjelasan jawaban", bgcolor=BG_CARD_ALT, color=TEXT_PRIMARY,
+                           border_color=BORDER_SUBTLE, border_radius=10)
+    err = ft.Text("", color="#F87171", size=13)
 
     def add(e):
         ok, msg = quiz_admin.add_question(user, lang_dd.value, {"q": q.value, "options": [o.value for o in opts],
@@ -403,33 +459,46 @@ def _tab_questions(page, user, mobile, refresh):
         def delete(e, c=c):
             ok, msg = quiz_admin.delete_question(user, c["lang"], c["id"])
             page.show_snack(msg); refresh()
-        items.append(card(ft.Row([ft.Column([ft.Text(f"[{c['lang']}] {c['q']}", size=13, color=ft.colors.ON_SURFACE),
-                                             ft.Text(f"Jawaban: {'ABCD'[c['answer']]}", size=11, color=ft.colors.ON_SURFACE_VARIANT)], spacing=2, expand=True),
-                                  ft.IconButton(ft.icons.DELETE, icon_color="#E53935", on_click=delete, tooltip="Hapus")]), padding=10))
+        items.append(glass_card(ft.Row([
+            ft.Column([
+                ft.Text(f"[{c['lang']}] {c['q']}", size=13, color=TEXT_PRIMARY),
+                ft.Text(f"Jawaban: {'ABCD'[c['answer']]}", size=11, color=TEXT_MUTED),
+            ], spacing=2, expand=True),
+            ft.IconButton(ft.icons.DELETE, icon_color="#F87171", on_click=delete, tooltip="Hapus"),
+        ]), padding=12))
     return ft.Column([
-        section_heading("Tambah soal quiz"),
-        card(ft.Column([lang_dd, q, *opts, correct, explain, err, green_button("Tambah soal", add)], spacing=8)),
-        section_heading(f"Soal kustom ({len(custom)})"),
-        *(items or [ft.Text("Belum ada soal kustom. Soal bawaan tetap dipakai.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]),
-    ], spacing=10)
+        _dark_heading("Tambah soal quiz"),
+        glass_card(ft.Column([lang_dd, q, *opts, correct, explain, err, green_button("Tambah soal", add)], spacing=10)),
+        _dark_heading(f"Soal kustom ({len(custom)})"),
+        *(items or [ft.Text("Belum ada soal kustom. Soal bawaan tetap dipakai.", size=13, color=TEXT_MUTED)]),
+    ], spacing=12)
 
 
 # ------------------------------------------------------------------ log aktivitas
 def _tab_logs(page, user, mobile, refresh):
     st = {"page": 1, "kw": ""}
     list_box = ft.Column(spacing=6)
-    info = ft.Text("", size=12, color=ft.colors.ON_SURFACE_VARIANT)
-    prev_btn = ft.OutlinedButton("❮ Sebelumnya")
-    next_btn = ft.OutlinedButton("Berikutnya ❯")
+    info = ft.Text("", size=12, color=TEXT_MUTED)
+    prev_btn = _dark_outlined_btn("❮ Sebelumnya", None)
+    next_btn = _dark_outlined_btn("Berikutnya ❯", None)
 
     def load(update=True):
         entries, pages, total = audit.list_logs(st["page"], 10, st["kw"])
         st["page"] = min(st["page"], pages)
-        list_box.controls = [ft.Container(padding=8, bgcolor=ft.colors.SURFACE, border=ft.border.all(1, ft.colors.with_opacity(0.35, ft.colors.OUTLINE)),
-                                          border_radius=6, content=ft.Text(
-                                              f"{e['time'].replace('T', ' ')}  |  {e['actor']}  |  {e['action']}  |  {e['detail']}",
-                                              size=12, color=ft.colors.ON_SURFACE_VARIANT)) for e in entries] or \
-                            [ft.Text("Tidak ada entri.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]
+        list_box.controls = [
+            ft.Container(
+                padding=10,
+                bgcolor=BG_CARD,
+                border=ft.border.all(1, BORDER_SUBTLE),
+                border_radius=10,
+                content=ft.Text(
+                    f"{e['time'].replace('T', ' ')}  |  {e['actor']}  |  {e['action']}  |  {e['detail']}",
+                    size=12,
+                    color=TEXT_PRIMARY,
+                ),
+            )
+            for e in entries
+        ] or [ft.Text("Tidak ada entri.", size=13, color=TEXT_MUTED)]
         info.value = f"Halaman {st['page']} dari {pages} ({total} entri)"
         prev_btn.disabled = st["page"] <= 1
         next_btn.disabled = st["page"] >= pages
@@ -448,11 +517,11 @@ def _tab_logs(page, user, mobile, refresh):
     prev_btn.on_click, next_btn.on_click = go_prev, go_next
     load(update=False)
     return ft.Column([
-        section_heading("Log aktivitas"),
+        _dark_heading("Log aktivitas"),
         ft.TextField(hint_text="Filter: LOGIN, MODUL, nama pengguna...", prefix_icon=ft.icons.SEARCH, on_change=on_filter,
-                     color=ft.colors.ON_SURFACE, border_radius=8),
+                     bgcolor=BG_CARD, color=TEXT_PRIMARY, border_color=BORDER_SUBTLE, border_radius=10),
         list_box, ft.Row([prev_btn, next_btn, info], wrap=True, spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-    ], spacing=10)
+    ], spacing=12)
 
 
 # ------------------------------------------------------------------ data: CSV dan backup
@@ -491,13 +560,15 @@ def _tab_data(page, user, mobile, refresh):
             _dialog(page, "Pulihkan data?", ft.Text(f"Data saat ini akan diganti dengan backup {name}."),
                     [ft.TextButton("Batal", on_click=lambda e2: _close(page)),
                      ft.ElevatedButton("Pulihkan", bgcolor="#E53935", color=ft.colors.WHITE, on_click=go)])
-        items.append(card(ft.Row([ft.Text(name, size=13, color=ft.colors.ON_SURFACE, expand=True),
-                                  ft.OutlinedButton("Pulihkan", on_click=restore)]), padding=10))
+        items.append(glass_card(ft.Row([
+            ft.Text(name, size=13, color=TEXT_PRIMARY, expand=True),
+            _dark_outlined_btn("Pulihkan", restore),
+        ]), padding=12))
     return ft.Column([
-        section_heading("Ekspor / impor modul (CSV)"),
-        card(ft.Row([green_button("Ekspor CSV", export_csv), dark_button("Impor CSV", import_csv)], wrap=True, spacing=8)),
-        section_heading("Backup dan pemulihan data"),
-        card(ft.Column([ft.Text("Backup menyalin semua berkas data (pengguna, modul, progres, skor, soal kustom, log).",
-                                size=13, color=ft.colors.ON_SURFACE_VARIANT), green_button("Buat backup sekarang", make_backup)], spacing=8)),
-        *(items or [ft.Text("Belum ada backup.", size=13, color=ft.colors.ON_SURFACE_VARIANT)]),
-    ], spacing=10)
+        _dark_heading("Ekspor / impor modul (CSV)"),
+        glass_card(ft.Row([green_button("Ekspor CSV", export_csv), dark_button("Impor CSV", import_csv)], wrap=True, spacing=8)),
+        _dark_heading("Backup dan pemulihan data"),
+        glass_card(ft.Column([ft.Text("Backup menyalin semua berkas data (pengguna, modul, progres, skor, soal kustom, log).",
+                                      size=13, color=TEXT_MUTED), green_button("Buat backup sekarang", make_backup)], spacing=8)),
+        *(items or [ft.Text("Belum ada backup.", size=13, color=TEXT_MUTED)]),
+    ], spacing=12)

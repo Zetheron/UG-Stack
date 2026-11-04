@@ -1,8 +1,9 @@
 """Tampilan Ruang Diskusi (Chat) Mahasiswa, Dosen, Admin & Bot Asisten UG-Stack."""
 import flet as ft
+from components.dashboard_theme import user_avatar_badge
 from components.i18n_ui import translate_tree
 from components.ui import GREEN, card, chip, green_button, pad, page_banner, section_heading
-from services import chat
+from services import auth, chat
 
 
 def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *args, **kwargs) -> ft.Control:
@@ -15,28 +16,27 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
     tf = ft.TextField(hint_text="Tulis pesan atau ketik @bot...", expand=True, border_radius=8)
     ch_buttons_row = ft.Row(wrap=True, spacing=6)
 
-    def render():
+    def render(do_update=False):
         ui_lang = getattr(page, "_ug_lang", "id")
         msgs = chat.list_messages(state["channel"])
         msg_col.controls = [
             card(ft.Column([
                 ft.Row([
+                    user_avatar_badge(m.get("username", ""), auth.get_avatar(m.get("username", "")), size=26),
                     ft.Text(f"{m.get('username')}" + (f" ({m.get('npm')})" if m.get('npm') else ""), weight=ft.FontWeight.BOLD, size=13),
                     chip(m.get("role", "mahasiswa").upper(), "#FFD2D7" if m.get("role") == "admin" else "#D9EEE1"),
                     ft.Text(m.get("time", ""), size=11, color=ft.colors.ON_SURFACE_VARIANT),
-                ], spacing=6, wrap=True),
+                ], spacing=6, wrap=True, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.Text(m.get("text", ""), size=13, selectable=True),
-            ], spacing=3), padding=12) for m in msgs
+            ], spacing=4), padding=12) for m in msgs
         ] or [ft.Text("Belum ada data.", size=13)]
         translate_tree(msg_col, ui_lang)
         for btn in ch_buttons_row.controls:
             active = btn.data == state["channel"]
             btn.bgcolor = GREEN if active else None
             btn.color = ft.colors.WHITE if active else None
-        if getattr(msg_col, "page", None):
-            msg_col.update()
-        if getattr(ch_buttons_row, "page", None):
-            ch_buttons_row.update()
+        if do_update and page:
+            page.update()
 
     def send(e=None, text=""):
         u = active_user or getattr(page, "_ug_user", None)
@@ -52,9 +52,7 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
         ok, msg = chat.send_message(u, state["channel"], val)
         if ok:
             tf.value = ""
-            render()
-            if getattr(tf, "page", None):
-                tf.update()
+            render(do_update=True)
         else:
             page.show_snack(msg)
 
@@ -62,7 +60,7 @@ def create_chat_view(page: ft.Page, go=None, mobile: bool = False, user=None, *a
 
     def set_ch(c):
         state["channel"] = c
-        render()
+        render(do_update=True)
 
     ch_buttons_row.controls = [
         ft.ElevatedButton("#umum", data="umum", bgcolor=GREEN, color=ft.colors.WHITE, on_click=lambda e: set_ch("umum")),

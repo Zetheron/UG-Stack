@@ -113,15 +113,19 @@ def open_change_password(page: ft.Page, user: dict, forced: bool = False, on_don
             msg.value = text
             page.update()
 
+    old.on_submit = save
+    new.on_submit = save
     conf.on_submit = save
     note = "Password Anda masih sementara/bawaan. Ganti sekarang untuk melanjutkan." if forced else "Pilih password baru yang kuat."
     actions = [ft.ElevatedButton("Simpan", bgcolor=GREEN, color=ft.colors.WHITE, on_click=save)]
     if not forced:
         actions.insert(0, ft.TextButton("Batal", on_click=lambda e: (setattr(page.dialog, "open", False), page.update())))
     page.dialog = ft.AlertDialog(
-        modal=True, title=ft.Text("Ganti Password"),
+        modal=True,
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Text("Ganti Password", weight=ft.FontWeight.BOLD),
         content=ft.Container(width=width, content=ft.Column(
-            [ft.Text(note, size=13), old, new, conf, msg], tight=True, scroll=ft.ScrollMode.AUTO)),
+            [ft.Text(note, size=13), old, new, conf, msg], tight=True, spacing=10, scroll=ft.ScrollMode.AUTO)),
         actions=actions)
     page.dialog.open = True
     page.update()
@@ -134,20 +138,20 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
     preview_holder = ft.Container(
         alignment=ft.alignment.center,
-        content=_render_avatar_preview(user["username"], state["avatar"], 76),
+        content=_render_avatar_preview(user["username"], state["avatar"], 80),
     )
     url_tf = ft.TextField(
         label="URL Foto (https://...) atau data:image/...",
         value=current_avatar if current_avatar.startswith("http") else "",
         color=ft.colors.ON_SURFACE,
-        border_radius=8,
+        border_radius=10,
     )
     msg = ft.Text("", size=12, color=ft.colors.RED_700)
     width = max(260, min(420, (page.width or 440) - 60))
 
     def refresh_preview(new_val: str):
         state["avatar"] = new_val
-        preview_holder.content = _render_avatar_preview(user["username"], new_val, 76)
+        preview_holder.content = _render_avatar_preview(user["username"], new_val, 80)
         msg.value = ""
         page.update()
 
@@ -158,11 +162,11 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
     url_tf.on_change = on_url_change
 
-    def _try_consume_upload() -> bool:
+    def _try_consume_upload(check_db: bool = False) -> bool:
         target_name = state.get("pending_upload")
         if not target_name:
             return False
-        data_uri = auth.pop_temp_avatar(user["username"])
+        data_uri = auth.pop_temp_avatar(user["username"], check_db=check_db)
         if not data_uri:
             dest_path = os.path.join(UPLOAD_DIR, target_name)
             if os.path.isfile(dest_path) and os.path.getsize(dest_path) > 0:
@@ -186,8 +190,8 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
             return
         prog = getattr(e, "progress", None)
         if prog is not None and prog >= 1.0:
-            for _ in range(25):
-                if _try_consume_upload():
+            for idx_try in range(25):
+                if _try_consume_upload(check_db=(idx_try in (0, 5, 15, 24))):
                     return
                 time.sleep(0.05)
 
@@ -217,7 +221,7 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
         # Mode Browser Web (f.path bernilai None): unggah via endpoint upload Flet
         try:
-            auth.pop_temp_avatar(user["username"])
+            auth.pop_temp_avatar(user["username"], check_db=True)
             ext = os.path.splitext(getattr(f, "name", "") or "avatar.png")[1].lower().lstrip(".") or "png"
             target_name = f"avatar__{user['username']}.{ext}"
             dest_path = os.path.join(UPLOAD_DIR, target_name)
@@ -226,6 +230,7 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
                     os.remove(dest_path)
                 except OSError:
                     pass
+            url_tf.value = ""
             state["pending_upload"] = target_name
             upload_url = page.get_upload_url(target_name, 120)
             try:
@@ -237,7 +242,7 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
                 for _ in range(80):
                     if state.get("pending_upload") != target_name:
                         return
-                    if _try_consume_upload():
+                    if _try_consume_upload(check_db=False):
                         return
                     time.sleep(0.08)
 
@@ -261,6 +266,7 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
     def pick_file(e):
         try:
+            url_tf.value = ""
             picker.pick_files(
                 allow_multiple=False,
                 allowed_extensions=["png", "jpg", "jpeg", "webp", "gif"],
@@ -272,6 +278,7 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
     preset_btns = [
         ft.OutlinedButton(
             label,
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20)),
             on_click=lambda e, u=url: (setattr(url_tf, "value", u), refresh_preview(u)),
         )
         for label, url in PRESET_AVATARS
@@ -279,11 +286,11 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
     def save(e=None):
         if state.get("pending_upload"):
-            for _ in range(35):
-                if _try_consume_upload():
+            for idx_try in range(35):
+                if _try_consume_upload(check_db=(idx_try in (0, 10, 25, 34))):
                     break
                 time.sleep(0.05)
-        candidate = (url_tf.value or "").strip() or state["avatar"]
+        candidate = state["avatar"] or (url_tf.value or "").strip()
         ok, text = auth.set_avatar(user["username"], candidate)
         if ok:
             if candidate:
@@ -298,6 +305,8 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
         else:
             msg.value = text
             page.update()
+
+    url_tf.on_submit = save
 
     def remove_photo(e):
         ok, text = auth.set_avatar(user["username"], "")
@@ -314,7 +323,8 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
 
     page.dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Ubah Foto Profil"),
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Text("Ubah Foto Profil", weight=ft.FontWeight.BOLD),
         content=ft.Container(
             width=width,
             content=ft.Column(
@@ -326,9 +336,14 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
                                 "📁 Pilih File Foto",
                                 bgcolor="#282A35",
                                 color=ft.colors.WHITE,
+                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20), elevation=0),
                                 on_click=pick_file,
                             ),
-                            ft.OutlinedButton("Hapus Foto", on_click=remove_photo),
+                            ft.OutlinedButton(
+                                "Hapus Foto",
+                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20)),
+                                on_click=remove_photo,
+                            ),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
                         wrap=True,

@@ -402,17 +402,27 @@ def list_students():
     return [u["username"] for u in users if u["role"] == "mahasiswa"]
 
 
-def set_user_npm(username: str, npm: str) -> tuple[bool, str]:
+def validate_npm(npm: str, exclude_username: str = "") -> tuple[bool, str]:
     clean = (npm or "").strip()
     if not clean or not (4 <= len(clean) <= 20) or not clean.replace("_", "").isalnum():
         return False, "Username 4-20 karakter: huruf, angka, atau underscore."
+    excl = (exclude_username or "").strip().lower()
+    users = storage.load_json(USERS_FILE, [])
+    for u in users:
+        if u["username"].lower() != excl and (
+            u["username"].lower() == clean.lower() or str(u.get("npm", "")).lower() == clean.lower()
+        ):
+            return False, "Username sudah dipakai."
+    return True, ""
+
+
+def set_user_npm(username: str, npm: str) -> tuple[bool, str]:
+    clean = (npm or "").strip()
     with storage.LOCK:
+        ok, msg = validate_npm(clean, exclude_username=username)
+        if not ok:
+            return False, msg
         users = storage.load_json(USERS_FILE, [])
-        for u in users:
-            if u["username"].lower() != username.lower() and (
-                u["username"].lower() == clean.lower() or str(u.get("npm", "")).lower() == clean.lower()
-            ):
-                return False, "Username sudah dipakai."
         for u in users:
             if u["username"].lower() == username.lower():
                 u["npm"] = clean
@@ -429,11 +439,27 @@ def store_temp_avatar(username: str, data_uri: str) -> None:
     key = (username or "").strip().lower()
     if key and data_uri:
         _TEMP_AVATARS[key] = data_uri
+        if os.getenv("VERCEL") or os.getenv("DATABASE_URL"):
+            try:
+                storage._orig_save_json(f"temp_avatar_{key}.json", {"avatar": data_uri})
+            except Exception:
+                pass
 
 
-def pop_temp_avatar(username: str) -> str:
+def pop_temp_avatar(username: str, check_db: bool = False) -> str:
     key = (username or "").strip().lower()
-    return _TEMP_AVATARS.pop(key, "") if key else ""
+    if not key:
+        return ""
+    val = _TEMP_AVATARS.pop(key, "")
+    if not val and check_db and (os.getenv("VERCEL") or os.getenv("DATABASE_URL")):
+        try:
+            doc = storage._orig_peek_json(f"temp_avatar_{key}.json")
+            if isinstance(doc, dict) and doc.get("avatar"):
+                val = str(doc["avatar"])
+                storage._orig_delete_json(f"temp_avatar_{key}.json")
+        except Exception:
+            pass
+    return val
 
 
 def get_avatar(username: str) -> str:
