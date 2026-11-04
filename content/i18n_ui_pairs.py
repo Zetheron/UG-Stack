@@ -370,6 +370,11 @@ UI_PAIRS = [
     ("Lanjutkan belajar:", "Continue learning:"), ("Sumber Belajar Pilihan", "Selected Learning Resources"),
     ("Offline - menampilkan ringkasan bawaan", "Offline - showing the built-in summary"),
     ("Mahasiswa Gunadarma", "Gunadarma Student"),
+    ("⏱️ 10 menit", "⏱️ 10 minutes"),
+    ("⏱️ Sisa waktu: 10:00", "⏱️ Time remaining: 10:00"),
+    ("Waktu Pengerjaan Quiz (10 Menit)", "Quiz Time Limit (10 Minutes)"),
+    ("⏰ Waktu habis! (00:00)", "⏰ Time is up! (00:00)"),
+    ("⏰ Waktu habis (10 menit)! Jawaban Anda dinilai otomatis.", "⏰ Time is up (10 minutes)! Your answers have been graded automatically."),
 ]
 
 # Pola untuk teks dinamis: "{}" mewakili nilai. Urutan "{}" di kedua sisi harus sama.
@@ -469,6 +474,10 @@ UI_PATTERNS = [
     ("{} pelajaran", "{} lessons"),
     ("{} soal pilihan ganda. Lulus bila nilai minimal {}%.", "{} multiple-choice questions. Pass with a score of at least {}%."),
     ("{} soal. Lulus bila nilai minimal {}%.", "{} questions. Pass with a score of at least {}%."),
+    ("{} soal. Waktu 10 menit. Lulus bila nilai minimal {}%.", "{} questions. 10 minutes limit. Pass with a score of at least {}%."),
+    ("⏱️ Sisa waktu: {}:{}", "⏱️ Time remaining: {}:{}"),
+    ("✓ Selesai ({} / 10:00)", "✓ Finished ({} / 10:00)"),
+    ("⏱️ Waktu pengerjaan: {} dari 10:00", "⏱️ Time taken: {} of 10:00"),
     ("{} {} - Ringkasan Sintaks", "{} {} - Cheat Sheet"),
     ("{} {} - Cheat Sheet", "{} {} - Cheat Sheet"),
     ("{} — {}/{} modul ({}%)", "{} — {}/{} modules ({}%)"),

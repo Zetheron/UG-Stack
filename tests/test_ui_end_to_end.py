@@ -282,6 +282,13 @@ class TestEndToEndUI(unittest.TestCase):
             start_quiz_btns = find_buttons(page.controls[1], "Mulai quiz")
             self.assertTrue(start_quiz_btns)
             start_quiz_btns[0].on_click(DummyEvent(start_quiz_btns[0]))  # HTML adalah indeks 0
+            quiz_texts = " ".join(
+                str(getattr(c, "value", "") or "")
+                for c in walk_controls(page.controls[1])
+                if isinstance(c, ft.Text)
+            )
+            self.assertIn("10:00", quiz_texts)
+            page._ug_quiz_set_remaining(300)  # simulasi sisa waktu 05:00
             rgs = [c for c in walk_controls(page.controls[1]) if isinstance(c, ft.RadioGroup)]
             for idx_q, rg in enumerate(rgs):
                 rg.value = str(QUIZZES["html"][idx_q]["answer"])

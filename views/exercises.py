@@ -1,3 +1,6 @@
+import threading
+import time
+
 import flet as ft
 
 from components.code_editor import get_samples
@@ -7,6 +10,9 @@ from content.quizzes import PASS_PERCENT
 from services import quiz as quiz_service
 from services import quiz_admin
 from views.tryit import create_simulator_cards
+
+QUIZ_DURATION_MINUTES = 10
+QUIZ_DURATION_SECONDS = QUIZ_DURATION_MINUTES * 60
 
 
 def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit=None):
@@ -42,7 +48,7 @@ def get_exercises_view(page: ft.Page, user, mobile: bool, on_open_quiz, on_tryit
                                     ],
                                     spacing=10,
                                 ),
-                                status,
+                                ft.Row([chip("⏱️ 10 menit", "#E0F2FE"), status], spacing=6, wrap=True),
                             ],
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -112,14 +118,64 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
             )
         )
 
-    result_box = ft.Column(spacing=10)
-    submit_btn = green_button("Periksa jawaban", lambda e: submit())
+    quiz_token = object()
+    page._ug_quiz_token = quiz_token
+    state = {"finished": False, "start_time": time.time(), "remaining": QUIZ_DURATION_SECONDS}
 
-    def submit():
+    timer_text = ft.Text("⏱️ Sisa waktu: 10:00", size=14, weight=ft.FontWeight.BOLD, color=GREEN)
+    timer_bar = ft.ProgressBar(value=1.0, color=GREEN, bgcolor=ft.colors.with_opacity(0.2, ft.colors.OUTLINE), height=6)
+    timer_card = card(
+        ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text("Waktu Pengerjaan Quiz (10 Menit)", size=13, weight=ft.FontWeight.W_600, color=ft.colors.ON_SURFACE),
+                        timer_text,
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    wrap=True,
+                ),
+                timer_bar,
+            ],
+            spacing=6,
+        ),
+        padding=14,
+    )
+
+    result_box = ft.Column(spacing=10)
+    submit_btn = green_button("Periksa jawaban", lambda e: submit(auto_timeout=False))
+
+    def _update_timer_display(rem_sec: int):
+        rem_sec = max(0, min(QUIZ_DURATION_SECONDS, int(rem_sec)))
+        state["remaining"] = rem_sec
+        mm, ss = divmod(rem_sec, 60)
+        t_color = GREEN if rem_sec > 120 else ("#F59E0B" if rem_sec > 60 else "#E53935")
+        timer_text.value = f"⏱️ Sisa waktu: {mm:02d}:{ss:02d}"
+        timer_text.color = t_color
+        timer_bar.value = rem_sec / QUIZ_DURATION_SECONDS
+        timer_bar.color = t_color
+
+    def submit(auto_timeout: bool = False):
+        if state["finished"]:
+            return
         answers = [int(g.value) if g.value is not None else None for g in groups]
-        if None in answers:
+        if not auto_timeout and None in answers:
             page.show_snack("Jawab semua soal terlebih dahulu.")      # validasi input
             return
+        state["finished"] = True
+        elapsed_sec = QUIZ_DURATION_SECONDS if auto_timeout else min(QUIZ_DURATION_SECONDS, max(0, int(time.time() - state["start_time"])))
+        el_mm, el_ss = divmod(elapsed_sec, 60)
+        el_str = f"{el_mm:02d}:{el_ss:02d}"
+        if auto_timeout:
+            timer_text.value = "⏰ Waktu habis! (00:00)"
+            timer_text.color = "#E53935"
+            timer_bar.value = 0.0
+            timer_bar.color = "#E53935"
+        else:
+            timer_text.value = f"✓ Selesai ({el_str} / 10:00)"
+            timer_text.color = GREEN
+
         res = quiz_service.grade(key, answers)
         for i, d in enumerate(res["details"]):
             groups[i].disabled = True
@@ -141,6 +197,7 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
                             weight=ft.FontWeight.BOLD,
                             color=ft.colors.BLACK,
                         ),
+                        ft.Text(f"⏱️ Waktu pengerjaan: {el_str} dari 10:00", size=13, color="#212121"),
                         ft.Text(verdict, size=14, color="#212121"),
                     ],
                     spacing=4,
@@ -158,22 +215,53 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
             buttons.insert(0, green_button("Masuk", lambda e: on_login()))
         controls.append(ft.Row(buttons, wrap=True, spacing=8))
         result_box.controls = controls
-        page.update()
+        if auto_timeout:
+            page.show_snack("⏰ Waktu habis (10 menit)! Jawaban Anda dinilai otomatis.")
+        else:
+            page.update()
 
-    top_actions = [ft.TextButton("❮ Semua quiz", on_click=lambda e: on_back())]
+    page._ug_quiz_timeout = lambda: submit(auto_timeout=True)
+    page._ug_quiz_set_remaining = _update_timer_display
+
+    if isinstance(page, ft.Page):
+        def _timer_worker():
+            while not state["finished"] and getattr(page, "_ug_quiz_token", None) is quiz_token:
+                time.sleep(1.0)
+                if state["finished"] or getattr(page, "_ug_quiz_token", None) is not quiz_token:
+                    return
+                rem = max(0, QUIZ_DURATION_SECONDS - int(time.time() - state["start_time"]))
+                _update_timer_display(rem)
+                if rem <= 0:
+                    try:
+                        submit(auto_timeout=True)
+                    except Exception:
+                        pass
+                    return
+                try:
+                    page.update()
+                except Exception:
+                    return
+
+        threading.Thread(target=_timer_worker, daemon=True).start()
+
+    top_actions = [ft.TextButton("❮ Semua quiz", on_click=lambda e: (setattr(page, "_ug_quiz_token", None), on_back()))]
     if on_tryit:
         top_actions.append(
-            green_button("Coba Sendiri ❯", lambda e: on_tryit(lang["name"], samples.get(lang["name"], samples["Python"])))
+            green_button(
+                "Coba Sendiri ❯",
+                lambda e: (setattr(page, "_ug_quiz_token", None), on_tryit(lang["name"], samples.get(lang["name"], samples["Python"]))),
+            )
         )
 
     return ft.Column(
         [
-            page_banner(f"Quiz {lang['name']}", f"{len(questions)} soal. Lulus bila nilai minimal {PASS_PERCENT}%.", mobile),
+            page_banner(f"Quiz {lang['name']}", f"{len(questions)} soal. Waktu 10 menit. Lulus bila nilai minimal {PASS_PERCENT}%.", mobile),
             ft.Container(
                 padding=pad(mobile),
                 content=ft.Column(
                     [
                         ft.Row(top_actions, alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
+                        timer_card,
                         *q_controls,
                         submit_btn,
                         result_box,
