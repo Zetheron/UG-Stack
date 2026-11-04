@@ -280,7 +280,7 @@ def main(page: ft.Page):
                                       on_quiz=lambda k: go("quiz", lang=k))
         if view == "admin":
             return get_admin_view(page, user, args.get("tab", "ringkasan" if auth.is_admin(user) else "laporan"), mobile,
-                                  on_tab=lambda t: go("admin", tab=t), on_dashboard=open_dashboard)
+                                  on_tab=lambda t: go("admin", tab=t), on_dashboard=lambda: go("dashboard"))
         if view == "tutorials":
             return get_tutorials_view(page, mobile, open_lang, lambda: go("roadmap"))
         if view == "lesson":

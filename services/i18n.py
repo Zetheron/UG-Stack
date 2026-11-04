@@ -116,11 +116,16 @@ def translate(text, lang: str):
         return hit
     _build()
     table, patterns = (_to_en, _pat_en) if lang == "en" else (_to_id, _pat_id)
+    other_table = _to_id if lang == "en" else _to_en
     result = table.get(text)
+    if result is None and text in other_table:
+        result = text
     if result is None:
         stripped = text.strip()
         if stripped != text and stripped in table:                       # spasi di awal/akhir dipertahankan
             result = text.replace(stripped, table[stripped])
+        elif stripped != text and stripped in other_table:
+            result = text
     if result is None:
         for rx, template in patterns:
             m = rx.match(text)

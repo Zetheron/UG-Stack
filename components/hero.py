@@ -9,8 +9,14 @@ def create_hero_section(on_search=None, on_roadmap_click=None, on_primary_click=
         border_radius=10,
         border_color=ft.colors.with_opacity(0.2, ft.colors.OUTLINE),
         color=ft.colors.ON_SURFACE,
-        suffix_icon=ft.icons.SEARCH,
-        content_padding=ft.padding.symmetric(horizontal=16, vertical=14),
+        suffix=ft.IconButton(
+            ft.icons.SEARCH,
+            icon_color="#04AA6D",
+            icon_size=20,
+            tooltip="Cari",
+            on_click=lambda e: on_search(search_tf.value) if on_search else None,
+        ),
+        content_padding=ft.padding.symmetric(horizontal=16, vertical=10),
         on_submit=lambda e: on_search(search_tf.value) if on_search else None
     )
 

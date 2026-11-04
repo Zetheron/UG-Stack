@@ -13,7 +13,7 @@ _TEXT_ATTRS = {                                   # nama kelas -> atribut teks y
     "PopupMenuItem": ("text",),
 }
 _CHILD_LISTS = ("controls", "actions", "items", "options", "spans", "tabs")
-_CHILD_SINGLE = ("content", "title", "leading", "subtitle", "trailing")
+_CHILD_SINGLE = ("content", "title", "leading", "subtitle", "trailing", "suffix", "prefix")
 
 
 def _set(obj, attr: str, lang: str) -> None:

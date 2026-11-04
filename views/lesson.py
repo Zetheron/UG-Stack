@@ -28,10 +28,14 @@ def get_lesson_view(page: ft.Page, lang: dict, idx: int, mobile: bool, on_lesson
     # ---- sidebar daftar pelajaran (desktop) / dropdown (HP)
     if mobile:
         side = ft.Dropdown(
-            label="Pelajaran", value=str(idx), col={"xs": 12},
+            label="Pelajaran", value=str(idx),
             options=[ft.dropdown.Option(key=str(i), text=f"{i + 1}. {l['title']}") for i, l in enumerate(lessons)],
             on_change=lambda e: on_lesson(key, int(e.control.value)))
-        sidebar = ft.Container(col={"xs": 12, "md": 3}, content=side)
+        quick_links = ft.Row([
+            ft.TextButton("📋 Ringkasan sintaks", on_click=lambda e: on_reference(key)),
+            ft.TextButton("📝 Quiz & sertifikat", on_click=lambda e: on_quiz(key)),
+        ], wrap=True, spacing=8)
+        sidebar = ft.Container(col={"xs": 12, "md": 3}, content=ft.Column([side, quick_links], spacing=6))
     else:
         rows = [ft.Text(f"Tutorial {lang['name']}", weight=ft.FontWeight.BOLD, size=16, color=ft.colors.ON_SURFACE)]
         for i, l in enumerate(lessons):

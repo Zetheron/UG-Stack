@@ -6,6 +6,7 @@ from components.ui import GREEN, card, green_button, link_text, page_banner, pad
 from content.languages import LANGS
 from content.reference import REFERENCE
 from services import web_sources as ws
+from services.i18n import translate
 
 
 def get_references_view(page: ft.Page, lang: dict, mobile: bool, on_lang):
@@ -16,7 +17,8 @@ def get_references_view(page: ft.Page, lang: dict, mobile: bool, on_lang):
         kw = (keyword or "").strip().lower()
         rows = []
         for syntax, desc in REFERENCE[key]:
-            if kw and kw not in syntax.lower() and kw not in desc.lower():
+            desc_en = translate(desc, "en").lower()
+            if kw and kw not in syntax.lower() and kw not in desc.lower() and kw not in desc_en:
                 continue
             rows.append(ft.Container(
                 padding=ft.padding.symmetric(horizontal=16, vertical=12),

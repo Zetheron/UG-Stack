@@ -81,7 +81,7 @@ def create_footer(on_footer_link=None):
                             ft.icons.CAMERA_ALT,
                             icon_color=ft.colors.GREY_300,
                             icon_size=20,
-                            tooltip="Instagram",
+                            tooltip="Instagram Resmi",
                             on_click=lambda e: on_footer_link("Instagram Official") if on_footer_link else None,
                         ),
                         ft.IconButton(
@@ -95,7 +95,7 @@ def create_footer(on_footer_link=None):
                             ft.icons.WORK,
                             icon_color=ft.colors.GREY_300,
                             icon_size=20,
-                            tooltip="LinkedIn Profile",
+                            tooltip="Profil LinkedIn",
                             on_click=lambda e: on_footer_link("LinkedIn") if on_footer_link else None,
                         ),
                     ],
