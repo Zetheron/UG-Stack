@@ -11,11 +11,13 @@ from components.dashboard_theme import (
     sidebar_nav_btn,
     sidebar_shell,
     top_bar,
+    user_avatar_badge,
 )
 from components.ui import GREEN, card, chip, dark_button, green_button, page_banner, pad, section_heading
 from content.languages import LANGS
 from services import audit, auth, backup, csv_io, quiz_admin, reports, settings
 from services.roles import ROLES, is_admin
+from views.account import open_change_avatar
 
 TABS = [("ringkasan", "🖥️ Ringkasan"), ("laporan", "📊 Progres Mahasiswa & Dosen"), ("pengguna", "👥 Pengguna"), ("akun", "➕ Buat Akun"),
         ("soal", "📝 Soal Quiz"), ("log", "📜 Log Aktivitas"), ("data", "💾 Data (Cadangan/CSV)")]
@@ -38,6 +40,9 @@ def get_admin_view(page: ft.Page, user: dict, tab: str, mobile: bool, on_tab, on
     nav_buttons = [sidebar_nav_btn(label, key == tab, lambda e, k=key: on_tab(k)) for key, label in TABS if key in allowed]
     nav_buttons.append(sidebar_nav_btn("📚 Daftar Modul", False, lambda e: on_dashboard()))
 
+    def on_avatar():
+        open_change_avatar(page, user, on_done=lambda: on_tab(tab))
+
     sidebar = sidebar_shell(
         brand_title=title,
         nav_buttons=nav_buttons,
@@ -45,12 +50,20 @@ def get_admin_view(page: ft.Page, user: dict, tab: str, mobile: bool, on_tab, on
         profile_actions=[
             dark_button("❮ Dasbor", lambda e: on_dashboard()),
         ],
+        on_avatar_click=on_avatar,
     )
     main_panel = ft.Container(
         col={"xs": 12, "md": 9, "lg": 9},
         content=ft.Column(
             [
-                top_bar(title, sub, right_controls=[dark_button("❮ Dasbor", lambda e: on_dashboard())]),
+                top_bar(
+                    title,
+                    sub,
+                    right_controls=[
+                        user_avatar_badge(user.get("username", ""), user.get("avatar", ""), size=36, on_click=lambda e: on_avatar()),
+                        dark_button("❮ Dasbor", lambda e: on_dashboard()),
+                    ],
+                ),
                 body,
             ],
             spacing=18,
@@ -175,7 +188,11 @@ def _tab_report(page, user, mobile, refresh):
         for r in rows:
             is_dsn = r["role"] == "dosen"
             role_badge = chip("DOSEN", "#DBEAFE") if is_dsn else chip("MAHASISWA", "#FFF4A3")
-            badges = [ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE), role_badge]
+            badges = [
+                user_avatar_badge(r["username"], r.get("avatar", ""), size=32),
+                ft.Text(r["username"], size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ON_SURFACE),
+                role_badge,
+            ]
             if r.get("npm"):
                 badges.append(chip(r["npm"], "#F3F4F6"))
             badges.append(chip(f"{r['percent']:.0f}%"))

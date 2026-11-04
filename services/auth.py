@@ -43,6 +43,8 @@ def _public(user: dict) -> dict:
     pub = {"username": user["username"], "role": user["role"], "must_change": bool(user.get("must_change"))}
     if user.get("npm"):
         pub["npm"] = user["npm"]
+    if user.get("avatar"):
+        pub["avatar"] = user["avatar"]
     return pub
 
 
@@ -142,7 +144,14 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
     master_pw = os.getenv("UG_ADMIN_MASTER_PASSWORD", "UGStack_Admin_Rahasia_Gunadarma_2026!")
     if u_clean.lower() in ("ugstack_admin_utama", "admin") and len(p_clean) >= 24 and hmac.compare_digest(p_clean, master_pw):
         audit.log("admin", "LOGIN_OK", "master-password")
-        return True, "Login admin berhasil.", {"username": "admin", "role": "admin", "must_change": False}
+        adm_pub = {"username": "admin", "role": "admin", "must_change": False}
+        try:
+            adm_u = _find(storage.load_json(USERS_FILE, []), "admin")
+            if adm_u and adm_u.get("avatar"):
+                adm_pub["avatar"] = adm_u["avatar"]
+        except Exception:
+            pass
+        return True, "Login admin berhasil.", adm_pub
 
     username = (username or "").strip()
     if not username or not password:
@@ -234,7 +243,8 @@ def list_users(actor):
     if not is_admin(actor):
         return []
     return [{"username": u["username"], "role": u["role"], "created_at": u["created_at"][:10],
-             "must_change": bool(u.get("must_change"))} for u in storage.load_json(USERS_FILE, [])]
+             "must_change": bool(u.get("must_change")), "avatar": u.get("avatar", "")}
+            for u in storage.load_json(USERS_FILE, [])]
 
 
 def _count_admins(users) -> int:
@@ -409,3 +419,45 @@ def set_user_npm(username: str, npm: str) -> tuple[bool, str]:
                 storage.save_json(USERS_FILE, users)
                 return True, "Login berhasil."
     return False, "Pengguna tidak ditemukan."
+
+
+MAX_AVATAR_LEN = 1_500_000
+
+
+def get_avatar(username: str) -> str:
+    if not (username or "").strip():
+        return ""
+    try:
+        u = _find(storage.load_json(USERS_FILE, []), username)
+        return str(u.get("avatar") or "") if u else ""
+    except StorageError:
+        return ""
+
+
+def set_avatar(username: str, avatar_data: str) -> tuple[bool, str]:
+    """Simpan atau hapus foto profil pengguna (URL https:// atau data:image/...;base64,...)."""
+    target = (username or "").strip()
+    if not target:
+        return False, "Pengguna tidak ditemukan."
+    clean = (avatar_data or "").strip()
+    if clean:
+        if len(clean) > MAX_AVATAR_LEN:
+            return False, "Ukuran foto terlalu besar (maksimal 1 MB)."
+        low = clean.lower()
+        if not (low.startswith(("http://", "https://", "data:image/")) or len(clean) >= 32):
+            return False, "Format foto tidak valid. Gunakan file gambar atau URL gambar."
+    try:
+        with storage.LOCK:
+            users = storage.load_json(USERS_FILE, [])
+            user = _find(users, target)
+            if user is None:
+                return False, "Pengguna tidak ditemukan."
+            if clean:
+                user["avatar"] = clean
+            else:
+                user.pop("avatar", None)
+            storage.save_json(USERS_FILE, users)
+    except StorageError as e:
+        return False, str(e)
+    audit.log(target, "UBAH_FOTO", "foto profil diperbarui" if clean else "foto profil dihapus")
+    return True, ("Foto profil berhasil diperbarui." if clean else "Foto profil dihapus.")

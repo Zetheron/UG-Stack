@@ -235,6 +235,21 @@ class TestEndToEndUI(unittest.TestCase):
             submit_btns = [b for b in find_buttons(page.controls[1], "Masuk") if isinstance(b, ft.ElevatedButton)]
             submit_btns[0].on_click(DummyEvent(submit_btns[0]))
 
+            # Uji fitur Upload / Ubah Foto Profil di Dasbor Mahasiswa
+            foto_btns = find_buttons(page.controls[1], "Foto Profil")
+            self.assertTrue(foto_btns)
+            foto_btns[0].on_click(DummyEvent(foto_btns[0]))
+            self.assertIsNotNone(page.dialog)
+            self.assertTrue(page.dialog.open)
+            # Pilih salah satu avatar preset lalu klik Simpan
+            preset_btns = find_buttons(page.dialog, "Python")
+            self.assertTrue(preset_btns)
+            preset_btns[0].on_click(DummyEvent(preset_btns[0]))
+            save_avatar_btns = find_buttons(page.dialog, "Simpan")
+            self.assertTrue(save_avatar_btns)
+            save_avatar_btns[0].on_click(DummyEvent(save_avatar_btns[0]))
+            self.assertTrue(auth.get_avatar("mhs_test").startswith("https://"))
+
             # Buka Latihan -> Mulai Quiz Python -> Jawab semua benar -> Lihat Sertifikat
             ex_btns = find_buttons(page.appbar, "Latihan")
             ex_btns[0].on_click(DummyEvent(ex_btns[0]))

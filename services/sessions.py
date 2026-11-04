@@ -43,8 +43,13 @@ def restore(token: str, now: float = None):
             return None
         for u in storage.load_json("users.json", []):
             if u["username"].lower() == rec["username"].lower() and u["role"] == rec["role"]:
-                return {"username": u["username"], "role": u["role"],
-                        "must_change": bool(u.get("must_change")) and u["role"] != "admin"}
+                pub = {"username": u["username"], "role": u["role"],
+                       "must_change": bool(u.get("must_change")) and u["role"] != "admin"}
+                if u.get("npm"):
+                    pub["npm"] = u["npm"]
+                if u.get("avatar"):
+                    pub["avatar"] = u["avatar"]
+                return pub
     except storage.StorageError:
         return None
     return None                                    # akun sudah dihapus atau perannya berubah

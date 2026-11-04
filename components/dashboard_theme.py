@@ -277,10 +277,40 @@ def categories_donut_card(total_modules: int, col=None) -> ft.Container:
     )
 
 
-def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actions: list, col=None) -> ft.Container:
+def user_avatar_badge(username: str, avatar_str: str = "", size: int = 38, on_click=None) -> ft.Container:
+    """Lencana foto profil bundar (mendukung data:image/...;base64, URL gambar, atau huruf inisial)."""
+    clean = (avatar_str or "").strip()
+    if clean:
+        if clean.startswith("data:image/") and "," in clean:
+            b64 = clean.split(",", 1)[1]
+            inner = ft.Image(src_base64=b64, width=size, height=size, fit=ft.ImageFit.COVER, border_radius=size // 2)
+        elif clean.startswith(("http://", "https://")):
+            inner = ft.Image(src=clean, width=size, height=size, fit=ft.ImageFit.COVER, border_radius=size // 2)
+        else:
+            inner = ft.Image(src_base64=clean, width=size, height=size, fit=ft.ImageFit.COVER, border_radius=size // 2)
+    else:
+        initial = (username or "U")[0].upper()
+        inner = ft.Text(initial, size=max(11, int(size * 0.38)), weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY)
+
+    return ft.Container(
+        width=size,
+        height=size,
+        border_radius=size // 2,
+        bgcolor=BG_CARD_ALT,
+        border=ft.border.all(1.5, "#3B345E" if not clean else "#10B981"),
+        alignment=ft.alignment.center,
+        clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+        on_click=on_click,
+        ink=bool(on_click),
+        tooltip="Ubah Foto Profil" if on_click else None,
+        content=inner,
+    )
+
+
+def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actions: list, on_avatar_click=None, col=None) -> ft.Container:
     """Sidebar kiri bergaya ModyLearn dengan logo di atas, menu di tengah, dan kartu profil di bawah."""
-    initial = (user.get("username") or "U")[0].upper()
     role_upper = (user.get("role") or "mahasiswa").upper()
+    avatar_data = user.get("avatar") or ""
 
     brand = ft.Container(
         padding=ft.padding.only(left=6, right=6, top=4, bottom=12),
@@ -311,6 +341,16 @@ def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actio
         ),
     )
 
+    actions_list = list(profile_actions or [])
+    if on_avatar_click:
+        actions_list.insert(
+            0,
+            ft.TextButton(
+                "📷 Foto Profil",
+                on_click=lambda e: on_avatar_click(),
+            ),
+        )
+
     profile_card = ft.Container(
         bgcolor=BG_CARD,
         border=ft.border.all(1, BORDER_SUBTLE),
@@ -320,14 +360,11 @@ def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actio
             [
                 ft.Row(
                     [
-                        ft.Container(
-                            width=36,
-                            height=36,
-                            border_radius=18,
-                            bgcolor=BG_CARD_ALT,
-                            border=ft.border.all(1, "#3B345E"),
-                            alignment=ft.alignment.center,
-                            content=ft.Text(initial, size=14, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+                        user_avatar_badge(
+                            user.get("username", ""),
+                            avatar_data,
+                            size=42,
+                            on_click=(lambda e: on_avatar_click()) if on_avatar_click else None,
                         ),
                         ft.Column(
                             [
@@ -341,7 +378,7 @@ def sidebar_shell(brand_title: str, nav_buttons: list, user: dict, profile_actio
                     spacing=10,
                 ),
                 ft.Divider(height=8, color=BORDER_SUBTLE),
-                ft.Row(profile_actions, wrap=True, spacing=6, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                ft.Row(actions_list, wrap=True, spacing=6, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             ],
             spacing=8,
         ),

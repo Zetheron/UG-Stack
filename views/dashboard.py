@@ -12,12 +12,14 @@ from components.dashboard_theme import (
     sidebar_nav_btn,
     sidebar_shell,
     top_bar,
+    user_avatar_badge,
 )
 from content.languages import find_lang
 from services import auth, modules as svc, progress, reports
 from services.roles import can_manage_content, is_admin
 from services.storage import StorageError
 from services.validators import BAHASA, LEVELS
+from views.account import open_change_avatar
 
 LEVEL_COLORS = {"Beginner": "#04AA6D", "Intermediate": "#F59E0B", "Advanced": "#E53935"}
 SORT_OPTIONS = [("judul", "Judul (A-Z)"), ("durasi", "Durasi"), ("level", "Tingkat")]
@@ -278,6 +280,9 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
             ),
         )
 
+    def on_avatar():
+        open_change_avatar(page, user, on_done=lambda: on_nav("dashboard") if on_nav else refresh())
+
     sidebar = sidebar_shell(
         brand_title="Dasbor",
         nav_buttons=nav_buttons,
@@ -293,6 +298,7 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
                 on_click=lambda e: on_logout() if on_logout else None,
             ),
         ],
+        on_avatar_click=on_avatar,
     )
 
     list_title = ft.Row(
@@ -301,7 +307,9 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
                               on_click=lambda e: open_form())] if admin else []),
         wrap=True, spacing=15, alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
-    right_top = []
+    right_top = [
+        user_avatar_badge(user.get("username", ""), user.get("avatar", ""), size=36, on_click=lambda e: on_avatar()),
+    ]
     if admin:
         right_top.append(
             ft.ElevatedButton(
