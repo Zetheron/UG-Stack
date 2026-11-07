@@ -311,11 +311,24 @@ class TestEndToEndUI(unittest.TestCase):
             )
             self.assertIn("10:00", quiz_texts)
             page._ug_quiz_set_remaining(300)  # simulasi sisa waktu 05:00
+            first_attempt_questions = [q["q"] for q in page._ug_quiz_questions]
             rgs = [c for c in walk_controls(page.controls[1]) if isinstance(c, ft.RadioGroup)]
             for idx_q, rg in enumerate(rgs):
-                rg.value = str(QUIZZES["html"][idx_q]["answer"])
+                rg.value = str(page._ug_quiz_questions[idx_q]["answer"])
             check_btns = find_buttons(page.controls[1], "Periksa jawaban")
             check_btns[0].on_click(DummyEvent(check_btns[0]))
+            # Uji ulangi quiz (percobaan ke-2 harus mengacak soal dan pilihan jawaban)
+            retry_btns = find_buttons(page.controls[1], "Ulangi quiz")
+            self.assertTrue(retry_btns)
+            retry_btns[0].on_click(DummyEvent(retry_btns[0]))
+            second_attempt_questions = [q["q"] for q in page._ug_quiz_questions]
+            self.assertNotEqual(first_attempt_questions, second_attempt_questions)
+            self.assertNotEqual(first_attempt_questions[0], second_attempt_questions[0])
+            rgs2 = [c for c in walk_controls(page.controls[1]) if isinstance(c, ft.RadioGroup)]
+            for idx_q, rg in enumerate(rgs2):
+                rg.value = str(page._ug_quiz_questions[idx_q]["answer"])
+            check_btns2 = find_buttons(page.controls[1], "Periksa jawaban")
+            check_btns2[0].on_click(DummyEvent(check_btns2[0]))
             cert_btns = find_buttons(page.controls[1], "Lihat sertifikat")
             self.assertTrue(cert_btns)
             cert_btns[0].on_click(DummyEvent(cert_btns[0]))
@@ -385,6 +398,35 @@ class TestEndToEndUI(unittest.TestCase):
             self.assertIn("Progres dosen", dash_texts)
         finally:
             main.run_pending = orig_run_pending
+
+    def test_T78_soal_quiz_berubah_dan_sesi_anti_logout(self):
+        from services import quiz_admin, sessions
+        # 1. Pastikan setiap bahasa punya >20 soal di bank soal dan setiap percobaan menghasilkan variasi soal & opsi
+        for lang_key in QUIZZES:
+            pool = quiz_admin.get_question_pool(lang_key)
+            self.assertGreaterEqual(len(pool), 26, f"Bank soal {lang_key} harus memiliki variasi soal konseptual tambahan")
+            att1 = quiz_admin.get_attempt_questions(lang_key, count=20)
+            att2 = quiz_admin.get_attempt_questions(lang_key, count=20, prev_questions=att1)
+            self.assertEqual(len(att1), 20)
+            self.assertEqual(len(att2), 20)
+            self.assertNotEqual([q["q"] for q in att1], [q["q"] for q in att2])
+            self.assertNotEqual(att1[0]["q"], att2[0]["q"])
+            for q in att1 + att2:
+                self.assertEqual(len(q["options"]), 4)
+                self.assertIn(q["answer"], (0, 1, 2, 3))
+
+        # 2. Pastikan sesi bertahan saat container /tmp di-reset berkat backup bertanda tangan HMAC
+        auth.register("andi_npm", "Rahasia123", "Rahasia123", npm="50429999", full_name="Andi Pratama", require_identity=True)
+        ok, _, u_pub = auth.login("50429999", "Rahasia123", expected_role="mahasiswa", npm="50429999", full_name="Andi Pratama")
+        self.assertTrue(ok)
+        self.assertEqual(u_pub.get("full_name"), "Andi Pratama")
+        signed = sessions.sign_user_backup(u_pub)
+        self.assertTrue(signed)
+        restored = sessions.verify_user_backup(signed)
+        self.assertIsNotNone(restored)
+        self.assertEqual(restored["username"], "andi_npm")
+        self.assertEqual(restored["npm"], "50429999")
+        self.assertEqual(restored["full_name"], "Andi Pratama")
 
 
 if __name__ == "__main__":

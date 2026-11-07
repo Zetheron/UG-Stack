@@ -7,7 +7,7 @@ import time
 import flet as ft
 
 from components.ui import GREEN
-from services import auth
+from services import auth, sessions
 
 UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "ugstack_uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -104,6 +104,10 @@ def open_change_password(page: ft.Page, user: dict, forced: bool = False, on_don
         ok, text = auth.change_password(user["username"], old.value, new.value, conf.value)
         if ok:
             user["must_change"] = False
+            try:
+                page.client_storage.set("ugstack_pref_user", sessions.sign_user_backup(user))
+            except Exception:
+                pass
             page.dialog.open = False
             page.show_snack(text)
             if on_done:
@@ -297,6 +301,10 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
                 user["avatar"] = candidate
             else:
                 user.pop("avatar", None)
+            try:
+                page.client_storage.set("ugstack_pref_user", sessions.sign_user_backup(user))
+            except Exception:
+                pass
             page.dialog.open = False
             page.show_snack(text)
             if on_done:
@@ -312,6 +320,10 @@ def open_change_avatar(page: ft.Page, user: dict, on_done=None):
         ok, text = auth.set_avatar(user["username"], "")
         if ok:
             user.pop("avatar", None)
+            try:
+                page.client_storage.set("ugstack_pref_user", sessions.sign_user_backup(user))
+            except Exception:
+                pass
             page.dialog.open = False
             page.show_snack(text)
             if on_done:

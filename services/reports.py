@@ -154,6 +154,8 @@ def student_summary(username: str) -> dict:
     for key, rec in scores.items():                # skor terbaik terendah di antara quiz yang sudah dicoba dan belum lulus
         if not rec.get("passed_at") and (weakest is None or rec["best"] < scores[weakest]["best"]):
             weakest = key
+    best_scores = [rec.get("best", 0) for rec in scores.values()]
+    avg_score = sum(best_scores) / len(best_scores) if best_scores else 0.0
     return {"percent": progress.percent(done_ids, ids), "done": len([i for i in ids if i in done_ids]), "total": len(ids),
             "passed": len([1 for rec in scores.values() if rec.get("passed_at")]), "attempted": len(scores),
-            "next_module": next_module, "weakest_lang": weakest}
+            "avg_score": avg_score, "next_module": next_module, "weakest_lang": weakest}

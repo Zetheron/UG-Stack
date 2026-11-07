@@ -30,7 +30,7 @@ from views.tutorials import get_tutorials_view
 MOBILE_BREAKPOINT = 768                       # lebar (px) di bawah ini = tampilan HP
 PROTECTED_VIEWS = {"dashboard", "certificate", "admin"}  # halaman yang wajib login
 ADMIN_VIEWS = {"admin"}                       # halaman khusus admin
-SESSION_TIMEOUT = 15 * 60                     # detik tanpa aktivitas sebelum logout otomatis
+SESSION_TIMEOUT = 24 * 3600                   # detik tanpa aktivitas sebelum logout otomatis (24 jam)
 FULLSCREEN_VIEWS = {"tryit"}                  # halaman tanpa appbar/footer
 NAV_OF = {
     "tutorials": "tutorials",
@@ -84,6 +84,7 @@ def main(page: ft.Page):
     _original_update = page.update
 
     def update_with_translation(*args, **kwargs):
+        state["last_active"] = time.time()
         translate_page(page, state["lang"])
         return _original_update(*args, **kwargs)
     page.update = update_with_translation
@@ -110,18 +111,25 @@ def main(page: ft.Page):
         saved_token = load_pref("session", "")
         if saved_token:
             restored_user = sessions.restore(saved_token)
-            if restored_user:
-                state["user"] = restored_user
-                try:
-                    import json as _json
-                    saved_view = _json.loads(load_pref("view", "") or "{}")
-                    if saved_view.get("view") in ("dashboard", "lesson", "references", "exercises", "chat", "certificates",
-                                                  "tutorials", "roadmap", "search", "admin", "tryit"):
-                        state["view"], state["args"] = saved_view["view"], saved_view.get("args") or {}
-                except (ValueError, TypeError, AttributeError):
-                    pass
-            else:
-                save_pref("session", "")
+        if not restored_user:
+            backup_user = sessions.verify_user_backup(load_pref("user", ""))
+            if backup_user:
+                restored_user = backup_user
+                new_tok = sessions.create(restored_user)
+                if new_tok:
+                    save_pref("session", new_tok)
+        if restored_user:
+            state["user"] = restored_user
+            save_pref("user", sessions.sign_user_backup(restored_user))
+            try:
+                import json as _json
+                saved_view = _json.loads(load_pref("view", "") or "{}")
+                if saved_view.get("view") in ("dashboard", "lesson", "references", "exercises", "quiz", "chat",
+                                              "certificates", "certificate", "tutorials", "roadmap", "search",
+                                              "admin", "tryit", "info"):
+                    state["view"], state["args"] = saved_view["view"], saved_view.get("args") or {}
+            except (ValueError, TypeError, AttributeError):
+                pass
     except Exception:
         restored_user = None
 
@@ -139,13 +147,17 @@ def main(page: ft.Page):
 
     # ------------------------------------------------------------ navigasi
     def check_session():
-        """Logout otomatis bila tidak ada aktivitas navigasi melebihi SESSION_TIMEOUT."""
+        """Perbarui masa aktif sesi; logout otomatis hanya bila tidak ada aktivitas melebihi SESSION_TIMEOUT (24 jam)."""
         now = time.time()
         if state["user"] and now - state["last_active"] > SESSION_TIMEOUT:
             auth.log_logout(state["user"]["username"])
             end_session()
             state["user"] = None
             show_snack("Sesi berakhir karena tidak ada aktivitas. Silakan login kembali.")
+        elif state["user"]:
+            tok = load_pref("session", "")
+            if tok:
+                sessions.touch(tok)
         state["last_active"] = now
 
     def go(view, **args):
@@ -211,6 +223,7 @@ def main(page: ft.Page):
         state["last_active"] = time.time()
         token = sessions.create(user)
         save_pref("session", token or "")
+        save_pref("user", sessions.sign_user_backup(user))
         show_snack(f"Selamat datang, {user['username']}!")
         open_dashboard()
         if user.get("must_change"):                             # password sementara/bawaan wajib diganti
@@ -219,6 +232,7 @@ def main(page: ft.Page):
     def end_session():
         sessions.revoke(load_pref("session", ""))
         save_pref("session", "")
+        save_pref("user", "")
         save_pref("view", "")
 
     def logout():
@@ -285,15 +299,18 @@ def main(page: ft.Page):
         if view == "tutorials":
             return get_tutorials_view(page, mobile, open_lang, lambda: go("roadmap"))
         if view == "lesson":
-            return get_lesson_view(page, BY_KEY[args["lang"]], args.get("idx", 0), mobile, on_lesson=open_lang,
+            lang_key = args.get("lang") if args.get("lang") in BY_KEY else "html"
+            return get_lesson_view(page, BY_KEY[lang_key], args.get("idx", 0), mobile, on_lesson=open_lang,
                                    on_tryit=open_tryit, on_quiz=lambda k: go("quiz", lang=k),
                                    on_reference=lambda k: go("references", lang=k))
         if view == "references":
-            return get_references_view(page, BY_KEY[args.get("lang", "python")], mobile, lambda k: go("references", lang=k))
+            lang_key = args.get("lang") if args.get("lang") in BY_KEY else "python"
+            return get_references_view(page, BY_KEY[lang_key], mobile, lambda k: go("references", lang=k))
         if view == "exercises":
             return get_exercises_view(page, user, mobile, lambda k: go("quiz", lang=k), on_tryit=open_tryit)
         if view == "quiz":
-            return get_quiz_view(page, BY_KEY[args["lang"]], user, mobile, on_back=lambda: go("exercises"),
+            lang_key = args.get("lang") if args.get("lang") in BY_KEY else "html"
+            return get_quiz_view(page, BY_KEY[lang_key], user, mobile, on_back=lambda: go("exercises"),
                                  on_login=lambda: open_auth("login"), on_certificate=lambda k: go("certificate", lang=k),
                                  on_retry=lambda k: go("quiz", lang=k), on_lesson=lambda k: open_lang(k),
                                  on_tryit=open_tryit)
@@ -301,7 +318,8 @@ def main(page: ft.Page):
             return get_certificates_view(page, user, mobile, on_login=lambda: open_auth("login"),
                                          on_quiz=lambda k: go("quiz", lang=k), on_view_cert=lambda k: go("certificate", lang=k))
         if view == "certificate":
-            return get_certificate_detail_view(page, user, args["lang"], mobile, on_back=lambda: go("certificates"))
+            lang_key = args.get("lang") if args.get("lang") in BY_KEY else "html"
+            return get_certificate_detail_view(page, user, lang_key, mobile, on_back=lambda: go("certificates"))
         if view == "search":
             return get_search_view(page, args.get("q", ""), mobile, on_search=open_search, on_open_lang=open_lang,
                                    on_open_lesson=open_lang, on_open_ref=lambda k: go("references", lang=k))

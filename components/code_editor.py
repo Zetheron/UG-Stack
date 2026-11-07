@@ -59,8 +59,11 @@ def create_editor_section(on_tryit_click=None, ui_lang: str = "id"):
             else:
                 btn.bgcolor = ft.colors.SURFACE
                 btn.color = ft.colors.ON_SURFACE
-        code_text.update()
-        tab_buttons.update()
+        try:
+            code_text.update()
+            tab_buttons.update()
+        except Exception:
+            pass
 
     def handle_tryit(e):
         if not on_tryit_click:

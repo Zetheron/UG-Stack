@@ -73,7 +73,10 @@ def get_references_view(page: ft.Page, lang: dict, mobile: bool, on_lang):
             except Exception:
                 results.controls = [ft.Text("Tidak dapat memuat hasil. Periksa koneksi internet.", size=12, color=ft.colors.RED_700)]
             translate_tree(results, getattr(page, "_ug_lang", "id"))
-            page.update()
+            try:
+                page.update()
+            except Exception:
+                pass
         run_in_thread(page, work)
 
     search_box.on_submit = do_search

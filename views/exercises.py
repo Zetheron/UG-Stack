@@ -94,11 +94,17 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
     key = lang["key"]
     ui_lang = getattr(page, "_ug_lang", "id")
     samples = get_samples(ui_lang)
-    questions = quiz_admin.get_questions(key)
+    prev_qs = getattr(page, f"_ug_last_quiz_{key}", None)
+    questions = quiz_admin.get_attempt_questions(key, prev_questions=prev_qs)
+    setattr(page, f"_ug_last_quiz_{key}", questions)
+    page._ug_quiz_questions = questions
     groups, feedback = [], []
     q_controls = []
     for i, q in enumerate(questions):
-        rg = ft.RadioGroup(content=ft.Column([ft.Radio(value=str(j), label=opt) for j, opt in enumerate(q["options"])], spacing=0))
+        rg = ft.RadioGroup(
+            data=q["answer"],
+            content=ft.Column([ft.Radio(value=str(j), label=opt) for j, opt in enumerate(q["options"])], spacing=0),
+        )
         fb = ft.Text("", size=13)
         groups.append(rg)
         feedback.append(fb)
@@ -126,7 +132,15 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
             [
                 ft.Row(
                     [
-                        ft.Text("Waktu Pengerjaan Quiz (10 Menit)", size=13, weight=ft.FontWeight.W_600, color=ft.colors.ON_SURFACE),
+                        ft.Row(
+                            [
+                                ft.Text("Waktu Pengerjaan Quiz (10 Menit)", size=13, weight=ft.FontWeight.W_600, color=ft.colors.ON_SURFACE),
+                                chip("🔀 Soal & opsi diacak", "#EDE9FE"),
+                            ],
+                            spacing=8,
+                            wrap=True,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
                         timer_text,
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -174,7 +188,7 @@ def get_quiz_view(page: ft.Page, lang: dict, user, mobile: bool, on_back, on_log
             timer_text.value = f"✓ Selesai ({el_str} / 10:00)"
             timer_text.color = GREEN
 
-        res = quiz_service.grade(key, answers)
+        res = quiz_service.grade(key, answers, questions=questions)
         for i, d in enumerate(res["details"]):
             groups[i].disabled = True
             feedback[i].value = ("✓ Benar. " if d["correct"] else "✗ Kurang tepat. ") + d["explain"]

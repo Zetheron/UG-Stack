@@ -120,7 +120,7 @@ def get_dashboard_view(page: ft.Page, user: dict, mobile: bool = False, on_logou
                 kpi_glow_card("PROGRES BELAJAR", f"{pct:.0f}%", ft.icons.TRENDING_UP_ROUNDED, "#10B981", "Progres"),
                 kpi_glow_card("QUIZ DICOBA", str(sm["attempted"]), ft.icons.QUIZ_ROUNDED, "#F59E0B", "🧪 Percobaan quiz"),
                 kpi_glow_card("SERTIFIKAT TERBIT", str(sm["passed"]), ft.icons.WORKSPACE_PREMIUM_ROUNDED, "#EC4899", "🏅 Sertifikat"),
-                kpi_glow_card("SKOR RATA-RATA", f"{pct:.0f}%", ft.icons.STAR_ROUNDED, "#EAB308", "Skor"),
+                kpi_glow_card("SKOR RATA-RATA", f"{sm.get('avg_score', 0.0):.0f}%", ft.icons.STAR_ROUNDED, "#EAB308", "Skor"),
             ]
             outline_style = ft.ButtonStyle(
                 color=TEXT_PRIMARY,

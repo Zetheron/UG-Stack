@@ -370,6 +370,7 @@ UI_PAIRS = [
     ("Lanjutkan belajar:", "Continue learning:"), ("Sumber Belajar Pilihan", "Selected Learning Resources"),
     ("Offline - menampilkan ringkasan bawaan", "Offline - showing the built-in summary"),
     ("Mahasiswa Gunadarma", "Gunadarma Student"),
+    ("🔀 Soal & opsi diacak", "🔀 Questions & options shuffled"),
     ("⏱️ 10 menit", "⏱️ 10 minutes"),
     ("⏱️ Sisa waktu: 10:00", "⏱️ Time remaining: 10:00"),
     ("Waktu Pengerjaan Quiz (10 Menit)", "Quiz Time Limit (10 Minutes)"),

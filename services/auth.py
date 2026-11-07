@@ -53,15 +53,17 @@ def _public(user: dict) -> dict:
 
 
 def _find(users: list, username: str):
-    target = (username or "").strip().lower()
+    target = " ".join((username or "").strip().split()).lower()
     if not target:
         return None
-    for u in users:                       # pencarian linear (username, NPM, atau nama lengkap mahasiswa)
+    for u in users:                       # 1) utamakan kecocokan eksak username atau NPM unik
         if (
             u["username"].lower() == target
-            or (u.get("npm") and str(u.get("npm")).lower() == target)
-            or (u.get("full_name") and str(u.get("full_name")).lower() == target)
+            or (u.get("npm") and str(u.get("npm")).strip().lower() == target)
         ):
+            return u
+    for u in users:                       # 2) fallback pencocokan nama lengkap mahasiswa
+        if u.get("full_name") and " ".join(str(u.get("full_name")).strip().split()).lower() == target:
             return u
     return None
 
@@ -117,7 +119,7 @@ def reset_lock():
 def register(username: str, password: str, confirm: str, npm: str = None, full_name: str = None, require_identity: bool = False):
     if not settings.registration_open():
         return False, "Pendaftaran mandiri sedang ditutup. Hubungi admin untuk dibuatkan akun."
-    clean_name = (full_name or "").strip()
+    clean_name = " ".join((full_name or "").strip().split())
     clean_npm = (npm or "").strip()
     if require_identity:
         if not clean_name or not clean_npm:
@@ -166,7 +168,7 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
     Akun admin hanya dapat masuk lewat password master khusus atau login_admin() dengan kode berputar."""
     u_clean = (username or "").strip()
     npm_clean = (npm or "").strip()
-    name_clean = (full_name or "").strip()
+    name_clean = " ".join((full_name or "").strip().split())
     p_clean = password or ""
     master_pw = os.getenv("UG_ADMIN_MASTER_PASSWORD", "UGStack_Admin_Rahasia_Gunadarma_2026!")
     admin_candidates = {u_clean.lower(), npm_clean.lower(), name_clean.lower()}
@@ -223,7 +225,7 @@ def login(username: str, password: str, expected_role: str = None, allow_admin: 
             return False, f"Akun ini terdaftar sebagai {user['role']}. Pilih peran {user['role']} di halaman login.", None
         if user["role"] == "mahasiswa" and npm_clean and name_clean:
             existing_npm = str(user.get("npm") or "").strip()
-            existing_name = str(user.get("full_name") or "").strip()
+            existing_name = " ".join(str(user.get("full_name") or "").strip().split())
             if existing_npm and existing_npm.lower() != npm_clean.lower():
                 return False, "NPM tidak sesuai dengan akun mahasiswa ini.", None
             if existing_name and existing_name.lower() != name_clean.lower():

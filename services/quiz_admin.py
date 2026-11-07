@@ -1,18 +1,67 @@
 """Soal quiz kustom yang dikelola admin (digabung dengan bank soal bawaan)."""
+import random
+
 from content.languages import BY_KEY
-from content.quizzes import QUIZZES
+from content.quizzes import CONCEPT_QUIZZES, QUIZZES
 
 from . import audit, storage
 from .roles import can_manage_content
 from .storage import StorageError
 
 CUSTOM_FILE = "quiz_custom.json"
+_RNG = random.SystemRandom()
 
 
 def get_questions(lang_key: str) -> list:
     """Soal bawaan + soal kustom untuk satu bahasa."""
     custom = storage.load_json(CUSTOM_FILE, {}).get(lang_key, [])
     return list(QUIZZES.get(lang_key, [])) + custom
+
+
+def get_question_pool(lang_key: str) -> list:
+    """Seluruh bank soal (soal inti + soal pemahaman konsep + soal kustom) untuk satu bahasa."""
+    custom = storage.load_json(CUSTOM_FILE, {}).get(lang_key, [])
+    return list(QUIZZES.get(lang_key, [])) + list(CONCEPT_QUIZZES.get(lang_key, [])) + custom
+
+
+def _shuffle_question_options(q: dict, prev_answer: int | None = None) -> dict:
+    """Acak urutan keempat opsi jawaban dan sesuaikan indeks jawaban benar."""
+    orig_opts = list(q.get("options") or [])
+    correct_idx = int(q.get("answer", 0))
+    pairs = list(enumerate(orig_opts))
+    _RNG.shuffle(pairs)
+    new_ans = next((i for i, (orig_i, _) in enumerate(pairs) if orig_i == correct_idx), 0)
+    if prev_answer is not None and len(pairs) > 1 and new_ans == prev_answer:
+        pairs = pairs[1:] + pairs[:1]
+        new_ans = next((i for i, (orig_i, _) in enumerate(pairs) if orig_i == correct_idx), 0)
+    return {**q, "options": [opt for _, opt in pairs], "answer": new_ans}
+
+
+def get_attempt_questions(lang_key: str, count: int = 20, prev_questions: list | None = None) -> list:
+    """Hasilkan daftar soal & opsi yang diacak setiap percobaan agar mahasiswa memahami konsep, bukan menghafal urutan."""
+    base_pool = list(QUIZZES.get(lang_key, [])) + list(CONCEPT_QUIZZES.get(lang_key, []))
+    custom = list(storage.load_json(CUSTOM_FILE, {}).get(lang_key, []))
+    target_n = min(max(1, count), len(base_pool))
+    prev_map = {pq.get("q"): pq.get("answer") for pq in (prev_questions or []) if isinstance(pq, dict) and pq.get("q")}
+
+    if prev_map and len(base_pool) > target_n:
+        unseen = [q for q in base_pool if q["q"] not in prev_map]
+        seen = [q for q in base_pool if q["q"] in prev_map]
+        _RNG.shuffle(unseen)
+        _RNG.shuffle(seen)
+        chosen = (unseen + seen)[:target_n]
+    else:
+        pool_copy = list(base_pool)
+        _RNG.shuffle(pool_copy)
+        chosen = pool_copy[:target_n]
+
+    combined = chosen + custom
+    _RNG.shuffle(combined)
+    if prev_questions and len(combined) > 1 and isinstance(prev_questions[0], dict):
+        if combined[0].get("q") == prev_questions[0].get("q"):
+            combined[0], combined[-1] = combined[-1], combined[0]
+
+    return [_shuffle_question_options(q, prev_map.get(q.get("q"))) for q in combined]
 
 
 def list_custom() -> list:

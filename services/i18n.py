@@ -50,7 +50,7 @@ def _build() -> None:
     from content.languages import LANGS
     from content.lessons import LESSONS
     from content.pages import INFO, ROADMAP
-    from content.quizzes import QUIZZES
+    from content.quizzes import CONCEPT_QUIZZES, QUIZZES
     from content.reference import REFERENCE
     from services.modules import SEED_MODULES
 
@@ -63,6 +63,13 @@ def _build() -> None:
                 _add(pa.strip(), pb.strip())
     for k, qs in QUIZZES.items():
         for q, (q_en, opts_en, explain_en) in zip(qs, C.QUIZ_EN[k]):
+            _add(q["q"], q_en)
+            _add(q["explain"], explain_en)
+            if opts_en:
+                for oa, ob in zip(q["options"], opts_en):
+                    _add(oa, ob)
+    for k, qs in CONCEPT_QUIZZES.items():
+        for q, (q_en, opts_en, explain_en) in zip(qs, getattr(C, "CONCEPT_QUIZ_EN", {}).get(k, [])):
             _add(q["q"], q_en)
             _add(q["explain"], explain_en)
             if opts_en:

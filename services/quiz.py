@@ -10,9 +10,10 @@ from . import quiz_admin, storage
 SCORES_FILE = "scores.json"
 
 
-def grade(lang_key: str, answers: list) -> dict:
+def grade(lang_key: str, answers: list, questions: list = None) -> dict:
     """answers: indeks opsi terpilih per soal (None bila belum dijawab)."""
-    questions = quiz_admin.get_questions(lang_key)
+    if questions is None:
+        questions = quiz_admin.get_questions(lang_key)
     correct = 0
     details = []
     for i, q in enumerate(questions):              # perulangan: periksa tiap soal
